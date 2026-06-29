@@ -1,0 +1,115 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Warn ─────────────────────────────────────────────────────────────────────
+// Stores moderation warnings issued to users.
+
+model Warn {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  createdAt   DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
+// ─── Timeout ──────────────────────────────────────────────────────────────────
+// Stores timeout history for users.
+// endedAt is set when a timeout is manually removed via /untimeout.
+// If endedAt is null and expiresAt is in the future, the timeout is still active.
+
+model Timeout {
+  id          String    @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  duration    Int       // Duration in seconds
+  expiresAt   DateTime
+  endedAt     DateTime? // Set when manually removed via /untimeout; null = still active or expired naturally
+  createdAt   DateTime  @default(now())
+
+  @@index([guildId, userId])
+}
+
+// ─── Ban ──────────────────────────────────────────────────────────────────────
+// Stores ban history for users.
+
+model Ban {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  deleteDays  Int      @default(0) // Number of days of messages deleted (0-7)
+  createdAt   DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
+// ─── Kick ─────────────────────────────────────────────────────────────────────
+// Stores kick history for users.
+
+model Kick {
+  id          String   @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  createdAt   DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
+// ─── Blacklist ────────────────────────────────────────────────────────────────
+// Stores blacklist entries for users.
+// active = true means the blacklist is currently in effect.
+// When a user is unblacklisted, active is set to false and revokedAt is set.
+// Keeping the row (rather than deleting it) preserves audit history for /modlogs.
+
+model Blacklist {
+  id          String    @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  active      Boolean   @default(true)
+  revokedAt   DateTime?              // Set when the blacklist is lifted via /unblacklist
+  revokedById String?                // Moderator who removed the blacklist
+  createdAt   DateTime  @default(now())
+
+  @@index([guildId, userId])
+  @@index([guildId, userId, active])
+}
+
+// ─── Flag ─────────────────────────────────────────────────────────────────────
+// Stores flag entries for users under staff watch.
+// active = true means the flag is currently in effect.
+// When a user is unflagged, active is set to false and revokedAt is set.
+// Keeping the row preserves audit history for /modlogs.
+
+model Flag {
+  id          String    @id @default(cuid())
+  guildId     String
+  userId      String
+  moderatorId String
+  reason      String
+  active      Boolean   @default(true)
+  revokedAt   DateTime?              // Set when the flag is lifted via /unflag
+  revokedById String?                // Moderator who removed the flag
+  createdAt   DateTime  @default(now())
+
+  @@index([guildId, userId])
+  @@index([guildId, userId, active])
+}
