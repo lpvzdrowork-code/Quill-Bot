@@ -4,26 +4,34 @@ import { createLogger } from './logger.js';
 const log = createLogger('BotStatus');
 
 // ─── Bot Status ───────────────────────────────────────────────────────────────
-// Updates the voice channel status badge to reflect whether Quill is online.
+// Updates the STATUS_CHANNEL_ID voice channel's name to reflect Quill's state.
 //
-// Uses the REST client directly — NOT the Discord.js client — so this works
-// reliably both on startup (before the gateway is ready) and during graceful
-// shutdown (after client.destroy() has been queued but before process.exit).
+// Three possible states:
+//   online      → "QUILL STATUS: 🟢"
+//   offline     → "QUILL STATUS: 🔴"
+//   maintenance → "QUILL STATUS: 🟠"  (set by the bridge server / PM2 watcher)
 //
-// Set STATUS_CHANNEL_ID in your .env to the voice channel you want to use.
-// The channel is optional — if the env var isn't set this is a silent no-op.
+// The bot sets:
+//   'online'  — in ready.ts once the gateway confirms the connection
+//   'offline' — in index.ts shutdown() before client.destroy()
 //
-// Usage:
-//   import { setBotStatus } from '../utils/botStatus.js';
+// The bridge server sets 'maintenance' when PM2 reports the process is down,
+// covering the crash case where the bot can't update its own status.
 //
-//   await setBotStatus('online');   // called in ready.ts
-//   await setBotStatus('offline');  // called in index.ts shutdown
+// ⚠️  Discord rate-limits channel name changes to 2 per 10 minutes per channel.
+//     The bot only changes the name on startup and shutdown so it never hits this.
+//     If your bridge server polls frequently, make sure it only fires a PATCH
+//     when the status has actually changed, not on every poll tick.
+//
+// Requires: STATUS_CHANNEL_ID in .env (optional — silently skipped if absent)
+// Requires: Quill has Manage Channel permission on the status voice channel
 
-export type BotStatusType = 'online' | 'offline';
+export type BotStatusType = 'online' | 'offline' | 'maintenance';
 
-const STATUS_TEXT: Record<BotStatusType, string> = {
-    online:  '🟢 Quill is Operational',
-    offline: '🔴 Quill is Offline',
+const CHANNEL_NAME: Record<BotStatusType, string> = {
+    online:      'QUILL STATUS: 🟢',
+    offline:     'QUILL STATUS: 🔴',
+    maintenance: 'QUILL STATUS: 🟠',
 };
 
 export async function setBotStatus(status: BotStatusType): Promise<void> {
@@ -31,24 +39,24 @@ export async function setBotStatus(status: BotStatusType): Promise<void> {
     const token     = process.env.DISCORD_TOKEN;
 
     if (!channelId) {
-        log.debug('STATUS_CHANNEL_ID not set in .env — skipping status badge update.');
+        log.debug('STATUS_CHANNEL_ID not set in .env — skipping status update.');
         return;
     }
 
-    // Token is validated at boot; this guard is just a safety net.
+    // Token is validated at boot; this is just a safety guard.
     if (!token) return;
 
     const rest = new REST({ version: '10' }).setToken(token);
 
     try {
-        await rest.put(
-            Routes.channelVoiceStatus(channelId),
-            { body: { status: STATUS_TEXT[status] } },
+        await rest.patch(
+            Routes.channel(channelId),
+            { body: { name: CHANNEL_NAME[status] } },
         );
-        log.info(`Status badge updated → ${STATUS_TEXT[status]}`);
+        log.info(`Status channel name updated → ${CHANNEL_NAME[status]}`);
     } catch (err) {
-        // Non-fatal — log and continue. Common causes: missing Manage Channel
-        // permission on the status channel, or the channel ID is wrong.
-        log.warn('Failed to update status badge:', err);
+        // Non-fatal. Common causes: missing Manage Channel permission,
+        // wrong channel ID, or hitting the 2/10min name-change rate limit.
+        log.warn('Failed to update status channel name:', err);
     }
 }
