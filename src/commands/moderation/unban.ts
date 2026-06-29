@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
+import { prisma } from '../../lib/prisma.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('Unban');
@@ -43,6 +44,13 @@ const command: BotCommand = {
 
         try {
             await interaction.guild!.members.unban(userId, reason);
+
+            // Fix #2: Mark any open ban records as lifted in the database.
+            // Uses updateMany in case multiple open records exist (e.g. ban after softban).
+            await prisma.ban.updateMany({
+                where: { guildId: interaction.guildId!, userId, endedAt: null },
+                data:  { endedAt: new Date() },
+            });
 
             await interaction.editReply(`✅ **${bannedUser.user.username}** has been unbanned.`);
 

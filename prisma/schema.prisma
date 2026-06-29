@@ -45,15 +45,18 @@ model Timeout {
 
 // ─── Ban ──────────────────────────────────────────────────────────────────────
 // Stores ban history for users.
+// endedAt is set when the ban is lifted via /unban; null = still active.
+// Softbans set endedAt immediately since the unban is automatic.
 
 model Ban {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   guildId     String
   userId      String
   moderatorId String
   reason      String
-  deleteDays  Int      @default(0) // Number of days of messages deleted (0-7)
-  createdAt   DateTime @default(now())
+  deleteDays  Int       @default(0) // Number of days of messages deleted (0-7)
+  endedAt     DateTime?             // Set when lifted via /unban; null = still active
+  createdAt   DateTime  @default(now())
 
   @@index([guildId, userId])
 }

@@ -85,6 +85,7 @@ const command: BotCommand = {
                     moderatorId: interaction.user.id,
                     reason:      `[SOFTBAN] ${reason}`,
                     deleteDays:  7,
+                    endedAt:     new Date(), // Softban = immediate unban, so close the record right away
                 },
             });
 

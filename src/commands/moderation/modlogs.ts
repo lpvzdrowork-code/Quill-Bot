@@ -34,7 +34,7 @@ const command: BotCommand = {
         const userId  = target.id;
 
         try {
-            const [bans, kicks, timeouts, warns] = await Promise.all([
+            const [bans, kicks, timeouts, warns, blacklists, flags] = await Promise.all([
                 prisma.ban.findMany({
                     where:   { guildId, userId },
                     orderBy: { createdAt: 'desc' },
@@ -51,9 +51,18 @@ const command: BotCommand = {
                     where:   { guildId, userId },
                     orderBy: { createdAt: 'desc' },
                 }),
+                prisma.blacklist.findMany({
+                    where:   { guildId, userId },
+                    orderBy: { createdAt: 'desc' },
+                }),
+                prisma.flag.findMany({
+                    where:   { guildId, userId },
+                    orderBy: { createdAt: 'desc' },
+                }),
             ]);
 
-            const total = bans.length + kicks.length + timeouts.length + warns.length;
+            const total = bans.length + kicks.length + timeouts.length + warns.length
+                        + blacklists.length + flags.length;
 
             if (total === 0) {
                 await interaction.editReply(`✅ **${target.user.username}** has no moderation history.`);
@@ -110,15 +119,27 @@ const command: BotCommand = {
                 });
             }
 
-            addPages(bans,     '🔨', 'Bans',     config.colors.error,
+            addPages(bans, '🔨', 'Bans', config.colors.error,
                 b => b.deleteDays > 0 ? `**Messages Deleted:** ${b.deleteDays} day(s)` : '');
 
-            addPages(kicks,    '👢', 'Kicks',    config.colors.error);
+            addPages(kicks, '👢', 'Kicks', config.colors.error);
 
             addPages(timeouts, '⏱️', 'Timeouts', config.colors.mod,
                 t => `**Duration:** ${t.duration}s | **Expires:** <t:${Math.floor(t.expiresAt.getTime() / 1000)}:R>`);
 
-            addPages(warns,    '⚠️', 'Warnings', config.colors.warn);
+            addPages(warns, '⚠️', 'Warnings', config.colors.warn);
+
+            // ── Fix #1: Blacklist and Flag history now included ────────────────
+
+            addPages(blacklists, '🚫', 'Blacklists', config.colors.error,
+                b => b.active
+                    ? '**Status:** 🔴 Active'
+                    : `**Status:** ✅ Revoked <t:${Math.floor(b.revokedAt!.getTime() / 1000)}:R>`);
+
+            addPages(flags, '🚩', 'Flags', config.colors.warn,
+                f => f.active
+                    ? '**Status:** 🔴 Active'
+                    : `**Status:** ✅ Revoked <t:${Math.floor(f.revokedAt!.getTime() / 1000)}:R>`);
 
             // ── Overview page (prepended) ─────────────────────────────────────
 
@@ -128,10 +149,12 @@ const command: BotCommand = {
                 .setThumbnail(target.user.displayAvatarURL())
                 .setDescription(`**${total}** total action(s) on record.`)
                 .addFields(
-                    { name: '🔨 Bans',     value: String(bans.length),     inline: true },
-                    { name: '👢 Kicks',    value: String(kicks.length),    inline: true },
-                    { name: '⏱️ Timeouts', value: String(timeouts.length), inline: true },
-                    { name: '⚠️ Warnings', value: String(warns.length),    inline: true },
+                    { name: '🔨 Bans',       value: String(bans.length),        inline: true },
+                    { name: '👢 Kicks',      value: String(kicks.length),       inline: true },
+                    { name: '⏱️ Timeouts',   value: String(timeouts.length),    inline: true },
+                    { name: '⚠️ Warnings',   value: String(warns.length),       inline: true },
+                    { name: '🚫 Blacklists', value: String(blacklists.length),  inline: true },
+                    { name: '🚩 Flags',      value: String(flags.length),       inline: true },
                 )
                 .setFooter({ text: `${config.meta.footer} • Page 1 of ${pages.length + 1} — use buttons to browse` })
                 .setTimestamp();
