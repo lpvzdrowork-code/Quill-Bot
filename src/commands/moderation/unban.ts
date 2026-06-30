@@ -59,6 +59,7 @@ const command: BotCommand = {
                 target:    bannedUser.user,
                 moderator: interaction.user,
                 reason,
+                guild:     interaction.guild!,
             }));
 
         } catch (err) {

@@ -122,6 +122,7 @@ const command: BotCommand = {
                 moderator: interaction.user,
                 reason,
                 duration:  durationKey,
+                guild:     interaction.guild ?? undefined,
                 extra: { 'Expires': `<t:${Math.floor(expiresAt.getTime() / 1000)}:R>` },
             }));
 

@@ -92,6 +92,7 @@ const command: BotCommand = {
                 target:    target.user,
                 moderator: interaction.user,
                 reason,
+                guild:     interaction.guild ?? undefined,
                 extra: deleteSeconds > 0
                     ? { 'Messages Deleted': `${deleteSeconds / 86400} day(s)` }
                     : undefined,

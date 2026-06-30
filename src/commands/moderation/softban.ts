@@ -96,6 +96,7 @@ const command: BotCommand = {
                 target:    target.user,
                 moderator: interaction.user,
                 reason,
+                guild:     interaction.guild ?? undefined,
                 extra:     { 'Messages Deleted': '7 days' },
             }));
 

@@ -81,6 +81,7 @@ const command: BotCommand = {
                 target:    target.user,
                 moderator: interaction.user,
                 reason,
+                guild:     interaction.guild ?? undefined,
                 extra: {
                     'Warning ID':     warn.id,
                     'Total Warnings': String(warnCount),

@@ -70,6 +70,7 @@ const command: BotCommand = {
                     target:    target.user,
                     moderator: interaction.user,
                     reason:    `Removed warning ID: \`${warnId}\``,
+                    guild:     interaction.guild ?? undefined,
                 }));
 
             } catch (err) {
@@ -99,6 +100,7 @@ const command: BotCommand = {
                 target:    target.user,
                 moderator: interaction.user,
                 reason:    `All ${count} warning(s) cleared.`,
+                guild:     interaction.guild ?? undefined,
             }));
 
         } catch (err) {
