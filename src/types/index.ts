@@ -34,6 +34,12 @@ import type { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.j
 export interface BotCommand {
     data: SlashCommandBuilder;
     execute(interaction: ChatInputCommandInteraction): Promise<void>;
+    /**
+     * Subfolder this command was loaded from (e.g. "moderation", "config").
+     * Set automatically by commandLoader.ts — don't set this in the command
+     * file itself. Used by /help to group commands without a hardcoded list.
+     */
+    category?: string;
 }
 
 // ─── Log Channel ──────────────────────────────────────────────────────────────

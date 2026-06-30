@@ -68,6 +68,13 @@ export async function loadCommands(): Promise<void> {
                 continue;
             }
 
+            // Derive category from the subfolder it was loaded from, e.g.
+            // "moderation/ban.ts" -> "moderation". Commands sitting directly in
+            // /commands with no subfolder fall back to "general". Used by /help
+            // to group commands without a hardcoded, manually-maintained list.
+            const [first, ...rest] = label.split('/');
+            command.category = rest.length > 0 ? first : 'general';
+
             client.commands.set(command.data.name, command);
             log.debug(`Registered command: /${command.data.name} ← ${label}`);
             loaded++;
