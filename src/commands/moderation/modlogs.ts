@@ -134,12 +134,16 @@ const command: BotCommand = {
             addPages(blacklists, '🚫', 'Blacklists', config.colors.error,
                 b => b.active
                     ? '**Status:** 🔴 Active'
-                    : `**Status:** ✅ Revoked <t:${Math.floor(b.revokedAt!.getTime() / 1000)}:R>`);
+                    : b.revokedAt
+                        ? `**Status:** ✅ Revoked <t:${Math.floor(b.revokedAt.getTime() / 1000)}:R>`
+                        : '**Status:** ✅ Revoked');
 
             addPages(flags, '🚩', 'Flags', config.colors.warn,
                 f => f.active
                     ? '**Status:** 🔴 Active'
-                    : `**Status:** ✅ Revoked <t:${Math.floor(f.revokedAt!.getTime() / 1000)}:R>`);
+                    : f.revokedAt
+                        ? `**Status:** ✅ Revoked <t:${Math.floor(f.revokedAt.getTime() / 1000)}:R>`
+                        : '**Status:** ✅ Revoked');
 
             // ── Overview page (prepended) ─────────────────────────────────────
 
