@@ -41,8 +41,3 @@ export interface BotCommand {
      */
     category?: string;
 }
-
-// ─── Log Channel ──────────────────────────────────────────────────────────────
-// Re-exported here so consumers can import everything from one place.
-
-export type { LogChannel } from '../utils/channelLogger.js';
