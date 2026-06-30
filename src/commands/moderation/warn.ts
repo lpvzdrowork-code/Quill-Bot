@@ -67,7 +67,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${target!.user.username}** has been warned. They now have **${warnCount}** warning(s).`);
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Warn',
                 target:    target!.user,
                 moderator: interaction.user,

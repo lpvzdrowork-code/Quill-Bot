@@ -122,3 +122,40 @@ model Flag {
   // enforced via raw SQL in migration 20260629230000_add_active_unique_constraints,
   // since Prisma's schema syntax cannot express a partial/filtered unique index.
 }
+
+// ─── LogChannel ────────────────────────────────────────────────
+// Maps a log category (e.g. "mod-logs", "member-logs", "bot-logs") to a
+// destination channel for a guild. Replaces the old hardcoded
+// STAFF_LOG_CHANNEL / MEMBER_LOG_CHANNEL / BOT_LOG_CHANNEL env vars —
+// configured at runtime via /setup logging instead of requiring a redeploy.
+// `enabled` lets /setup toggle a category off without losing its channel
+// mapping, so re-enabling it doesn't require re-entering the channel.
+
+model LogChannel {
+  id        String   @id @default(cuid())
+  guildId   String
+  category  String   // One of LOG_CATEGORIES in src/utils/guildConfig.ts
+  channelId String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([guildId, category])
+  @@index([guildId])
+}
+
+// ─── CommandChannel ──────────────────────────────────────────────
+// Whitelists channels where Quill's commands may be used, configured via
+// /setup command-channel. If no rows exist for a guild, commands are allowed
+// in any channel (unrestricted) — the restriction only takes effect once at
+// least one channel has been explicitly designated.
+
+model CommandChannel {
+  id        String   @id @default(cuid())
+  guildId   String
+  channelId String
+  createdAt DateTime @default(now())
+
+  @@unique([guildId, channelId])
+  @@index([guildId])
+}

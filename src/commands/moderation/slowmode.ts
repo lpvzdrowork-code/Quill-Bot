@@ -46,7 +46,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ ${status}`);
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Slowmode',
                 target:    interaction.user,
                 moderator: interaction.user,

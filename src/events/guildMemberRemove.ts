@@ -21,7 +21,7 @@ const event: BotEvent = {
 
         log.info(`${user.username} left ${member.guild.name}.`);
 
-        await sendLog('memberLog', Embeds.memberLeave(user));
+        await sendLog(member.guild.id, 'member-logs', Embeds.memberLeave(user));
     },
 };
 

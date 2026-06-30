@@ -1,46 +1,55 @@
 import type { EmbedBuilder, TextChannel } from 'discord.js';
 import { client } from '../client.js';
 import { config } from '../config.js';
+import { getLogChannelId, type LogCategory } from './guildConfig.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('ChannelLogger');
 
-// ─── Log Channel Keys ─────────────────────────────────────────────────────────
-// Maps to the channel IDs defined in config.guild.channels.
-
-export type LogChannel = keyof typeof config.guild.channels;
-
 // ─── Channel Logger ───────────────────────────────────────────────────────────
-// Sends an embed to a configured log channel by name.
-// Silently skips if the channel ID is not set in config or the channel
-// can't be resolved — so missing config never crashes the bot.
+// Sends an embed to a guild's configured log channel for a given category.
+// Channel routing now lives in the database (LogChannel table, managed via
+// /setup logging + /setup toggle) instead of hardcoded .env values — this
+// silently falls back to the legacy env vars below ONLY if no DB row exists
+// yet, so an existing deployment doesn't go dark the moment this shipped.
+// Once /setup logging has been run for a category, the DB value always wins.
 //
 // Usage:
 //   import { sendLog } from '../utils/channelLogger.js';
 //
-//   await sendLog('modLog',   Embeds.modAction({ ... }));
-//   await sendLog('staffLog', Embeds.modAction({ ... }));
-//   await sendLog('memberLog', Embeds.memberJoin(user));
+//   await sendLog(interaction.guildId!, 'mod-logs',    Embeds.modAction({ ... }));
+//   await sendLog(member.guild.id,      'member-logs', Embeds.memberJoin(user));
 
-export async function sendLog(channel: LogChannel, embed: EmbedBuilder): Promise<void> {
-    const channelId = config.guild.channels[channel];
+// Legacy env-based fallback, kept only for guilds that haven't run /setup yet.
+const LEGACY_FALLBACK: Record<LogCategory, string> = {
+    'mod-logs':    config.guild.channels.staffLog,
+    'member-logs': config.guild.channels.memberLog,
+    'bot-logs':    config.guild.channels.botLog,
+};
+
+export async function sendLog(guildId: string, category: LogCategory, embed: EmbedBuilder): Promise<void> {
+    let channelId = await getLogChannelId(guildId, category);
 
     if (!channelId) {
-        log.warn(`No channel ID configured for "${channel}". Skipping log.`);
-        return;
+        const fallback = LEGACY_FALLBACK[category];
+        if (!fallback) {
+            log.debug(`No log channel configured for "${category}" in guild ${guildId} (DB or .env). Skipping log.`);
+            return;
+        }
+        channelId = fallback;
     }
 
     try {
         const resolved = await client.channels.fetch(channelId);
 
         if (!resolved || !resolved.isTextBased()) {
-            log.warn(`Channel "${channel}" (${channelId}) is not a text channel or could not be resolved.`);
+            log.warn(`Channel for "${category}" (${channelId}) is not a text channel or could not be resolved.`);
             return;
         }
 
         await (resolved as TextChannel).send({ embeds: [embed] });
 
     } catch (err) {
-        log.error(`Failed to send log to "${channel}" (${channelId}):`, err);
+        log.error(`Failed to send log for "${category}" (${channelId}):`, err);
     }
 }

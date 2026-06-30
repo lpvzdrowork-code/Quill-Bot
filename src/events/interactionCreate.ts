@@ -4,6 +4,7 @@ import type { BotCommand } from '../types/index.js';
 import { client } from '../client.js';
 import { createLogger } from '../utils/logger.js';
 import { checkCooldown } from '../utils/cooldown.js';
+import { isAllowedCommandChannel, getCommandChannelIds } from '../utils/guildConfig.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -31,6 +32,23 @@ const event: BotEvent = {
                 ephemeral: true,
             });
             return;
+        }
+
+        // /setup is exempt so admins configuring the allowlist can never lock
+        // themselves out of fixing it from a channel that isn't on the list yet.
+        if (interaction.guildId && interaction.commandName !== 'setup') {
+            const allowed = await isAllowedCommandChannel(interaction.guildId, interaction.channelId);
+
+            if (!allowed) {
+                const channelIds = await getCommandChannelIds(interaction.guildId);
+                const channelList = channelIds.map(id => `<#${id}>`).join(', ');
+
+                await interaction.reply({
+                    content:   `❌ Commands aren't allowed in this channel. Try: ${channelList}`,
+                    ephemeral: true,
+                });
+                return;
+            }
         }
 
         try {

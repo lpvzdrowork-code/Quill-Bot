@@ -94,7 +94,7 @@ const command: BotCommand = {
 
             // ── Log to staff log ──────────────────────────────────────────────
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Unflag',
                 target:    target.user,
                 moderator: interaction.user,

@@ -65,7 +65,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${target!.user.username}** has been kicked.`);
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Kick',
                 target:    target!.user,
                 moderator: interaction.user,

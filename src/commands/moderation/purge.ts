@@ -92,7 +92,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ ${description}`);
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Purge',
                 target:    target ?? interaction.user,
                 moderator: interaction.user,

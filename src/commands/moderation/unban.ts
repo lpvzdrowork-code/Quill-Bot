@@ -54,7 +54,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${bannedUser.user.username}** has been unbanned.`);
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Unban',
                 target:    bannedUser.user,
                 moderator: interaction.user,

@@ -90,7 +90,7 @@ const command: BotCommand = {
 
             // ── Step 3: Log to staff log ──────────────────────────────────────
 
-            await sendLog('staffLog', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
                 action:    'Flag',
                 target:    target!.user,
                 moderator: interaction.user,

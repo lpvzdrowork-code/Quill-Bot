@@ -17,7 +17,7 @@ const event: BotEvent = {
 
         log.info(`${member.user.username} joined ${member.guild.name}.`);
 
-        await sendLog('memberLog', Embeds.memberJoin(member.user));
+        await sendLog(member.guild.id, 'member-logs', Embeds.memberJoin(member.user));
 
         // ── Blacklist persistence ─────────────────────────────────────────────
         // If this user has an active blacklist record, re-apply the role
@@ -39,7 +39,7 @@ const event: BotEvent = {
                 await member.roles.add(blacklistRoleId, 'Blacklist persisted on rejoin by Quill');
                 log.info(`Re-applied blacklist role to ${member.user.username} on rejoin.`);
 
-                await sendLog('staffLog', Embeds.modAction({
+                await sendLog(member.guild.id, 'mod-logs', Embeds.modAction({
                     action:    'Blacklist',
                     target:    member.user,
                     moderator: member.client.user!,
