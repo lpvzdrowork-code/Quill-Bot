@@ -65,7 +65,7 @@ const command: BotCommand = {
 
                 await interaction.editReply(`✅ Warning \`${warnId}\` has been removed from **${target.user.username}**.`);
 
-                await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+                await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                     action:    'Warn Removed',
                     target:    target.user,
                     moderator: interaction.user,
@@ -95,7 +95,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ Cleared **${count}** warning(s) from **${target.user.username}**.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Warns Cleared',
                 target:    target.user,
                 moderator: interaction.user,

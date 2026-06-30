@@ -92,7 +92,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ Blacklist removed from **${target.user.username}**.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Unblacklist',
                 target:    target.user,
                 moderator: interaction.user,

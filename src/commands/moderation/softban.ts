@@ -77,7 +77,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${target!.user.username}** has been softbanned. Their last 7 days of messages have been deleted.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Softban',
                 target:    target!.user,
                 moderator: interaction.user,

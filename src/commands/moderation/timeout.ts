@@ -103,7 +103,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${target!.user.username}** has been timed out for **${durationKey}**.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Timeout',
                 target:    target!.user,
                 moderator: interaction.user,

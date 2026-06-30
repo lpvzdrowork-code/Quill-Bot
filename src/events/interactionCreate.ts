@@ -5,6 +5,8 @@ import { client } from '../client.js';
 import { createLogger } from '../utils/logger.js';
 import { checkCooldown } from '../utils/cooldown.js';
 import { isAllowedCommandChannel, getCommandChannelIds } from '../utils/guildConfig.js';
+import { sendLog } from '../utils/channelLogger.js';
+import { Embeds } from '../utils/embeds.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -63,6 +65,16 @@ const event: BotEvent = {
                 await interaction.followUp(message);
             } else {
                 await interaction.reply(message);
+            }
+
+            // Surface the failure to staff via message-logs — this is the one
+            // event type the "bot logs" category was always meant for, it just
+            // never had a call site wired up to it until now.
+            if (interaction.guildId) {
+                await sendLog(interaction.guildId, 'message-logs', Embeds.error(
+                    `\`/${interaction.commandName}\` threw an error for ${interaction.user}.\n\`\`\`${String(err instanceof Error ? err.message : err).slice(0, 500)}\`\`\``,
+                    '⚠️ Command Error',
+                ));
             }
         }
     },

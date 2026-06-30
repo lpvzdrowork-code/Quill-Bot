@@ -71,7 +71,7 @@ const command: BotCommand = {
                 log.warn(`Could not send lock notice to #${channel.name} — bot may lack Send Messages there.`);
             }
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    locking ? 'Lock' : 'Unlock',
                 target:    interaction.user,
                 moderator: interaction.user,

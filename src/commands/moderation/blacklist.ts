@@ -101,7 +101,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ **${target!.user.username}** has been blacklisted.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Blacklist',
                 target:    target!.user,
                 moderator: interaction.user,

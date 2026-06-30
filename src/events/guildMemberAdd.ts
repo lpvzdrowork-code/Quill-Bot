@@ -39,7 +39,7 @@ const event: BotEvent = {
                 await member.roles.add(blacklistRoleId, 'Blacklist persisted on rejoin by Quill');
                 log.info(`Re-applied blacklist role to ${member.user.username} on rejoin.`);
 
-                await sendLog(member.guild.id, 'mod-logs', Embeds.modAction({
+                await sendLog(member.guild.id, 'staff-logs', Embeds.modAction({
                     action:    'Blacklist',
                     target:    member.user,
                     moderator: member.client.user!,

@@ -17,14 +17,14 @@ const log = createLogger('ChannelLogger');
 // Usage:
 //   import { sendLog } from '../utils/channelLogger.js';
 //
-//   await sendLog(interaction.guildId!, 'mod-logs',    Embeds.modAction({ ... }));
+//   await sendLog(interaction.guildId!, 'staff-logs',  Embeds.modAction({ ... }));
 //   await sendLog(member.guild.id,      'member-logs', Embeds.memberJoin(user));
 
 // Legacy env-based fallback, kept only for guilds that haven't run /setup yet.
 const LEGACY_FALLBACK: Record<LogCategory, string> = {
-    'mod-logs':    config.guild.channels.staffLog,
-    'member-logs': config.guild.channels.memberLog,
-    'bot-logs':    config.guild.channels.botLog,
+    'staff-logs':   config.guild.channels.staffLog,
+    'member-logs':  config.guild.channels.memberLog,
+    'message-logs': config.guild.channels.botLog,
 };
 
 export async function sendLog(guildId: string, category: LogCategory, embed: EmbedBuilder): Promise<void> {

@@ -74,7 +74,7 @@ const command: BotCommand = {
 
             await interaction.editReply(`✅ Timeout removed from **${target.user.username}**.`);
 
-            await sendLog(interaction.guildId!, 'mod-logs', Embeds.modAction({
+            await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Untimeout',
                 target:    target.user,
                 moderator: interaction.user,

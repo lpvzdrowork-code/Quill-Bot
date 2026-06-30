@@ -19,7 +19,7 @@ const log = createLogger('GuildConfig');
 // Any /setup write calls invalidateGuildConfig() so changes are visible on
 // the very next read rather than waiting out the TTL.
 
-export const LOG_CATEGORIES = ['mod-logs', 'member-logs', 'bot-logs'] as const;
+export const LOG_CATEGORIES = ['staff-logs', 'member-logs', 'message-logs'] as const;
 export type LogCategory = typeof LOG_CATEGORIES[number];
 
 export function isLogCategory(value: string): value is LogCategory {
