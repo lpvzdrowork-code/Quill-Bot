@@ -5,6 +5,7 @@ import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Timeout');
 
@@ -52,29 +53,15 @@ const command: BotCommand = {
         const reason       = interaction.options.getString('reason') ?? 'No reason provided.';
         const durationSecs = DURATIONS[durationKey];
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel: 'timeout',
+            capability:  'moderatable',
+        });
 
-        if (!target.moderatable) {
-            await interaction.editReply('❌ I cannot timeout that member. They may have a higher role than me.');
-            return;
-        }
-
-        if (target.id === interaction.user.id) {
-            await interaction.editReply('❌ You cannot timeout yourself.');
-            return;
-        }
-
-        if (target.user.bot) {
-            await interaction.editReply('❌ You cannot timeout a bot.');
-            return;
-        }
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot timeout a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
@@ -82,9 +69,9 @@ const command: BotCommand = {
             const expiresAt = new Date(Date.now() + durationSecs * 1000);
 
             try {
-                await target.send({ embeds: [Embeds.modAction({
+                await target!.send({ embeds: [Embeds.modAction({
                     action:    'Timeout',
-                    target:    target.user,
+                    target:    target!.user,
                     moderator: interaction.user,
                     reason,
                     duration:  durationKey,
@@ -92,21 +79,21 @@ const command: BotCommand = {
                 })] });
             } catch { /* DMs closed */ }
 
-            await target.timeout(durationSecs * 1000, reason);
+            await target!.timeout(durationSecs * 1000, reason);
 
             const timeoutRoleId = config.guild.roles.timeout;
             if (timeoutRoleId) {
                 try {
-                    await target.roles.add(timeoutRoleId, 'Timeout role assigned by Quill');
+                    await target!.roles.add(timeoutRoleId, 'Timeout role assigned by Quill');
                 } catch {
-                    log.warn(`Failed to assign timeout role (${timeoutRoleId}) to ${target.user.username}.`);
+                    log.warn(`Failed to assign timeout role (${timeoutRoleId}) to ${target!.user.username}.`);
                 }
             }
 
             await prisma.timeout.create({
                 data: {
                     guildId:     interaction.guildId!,
-                    userId:      target.id,
+                    userId:      target!.id,
                     moderatorId: interaction.user.id,
                     reason,
                     duration:    durationSecs,
@@ -114,11 +101,11 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target.user.username}** has been timed out for **${durationKey}**.`);
+            await interaction.editReply(`✅ **${target!.user.username}** has been timed out for **${durationKey}**.`);
 
             await sendLog('staffLog', Embeds.modAction({
                 action:    'Timeout',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 duration:  durationKey,

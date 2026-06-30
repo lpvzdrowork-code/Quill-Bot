@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Flag');
 
@@ -34,38 +35,15 @@ const command: BotCommand = {
 
             // ── Validation ────────────────────────────────────────────────────
 
-            if (!target) {
-                await interaction.editReply('❌ That user could not be found in this server.');
-                return;
-            }
+            const guardError = validateModerationTarget({
+                interaction,
+                target,
+                actionLabel:           'flag',
+                protectOwnerAndAdmins: true,
+            });
 
-            if (target.id === interaction.user.id) {
-                await interaction.editReply('❌ You cannot flag yourself.');
-                return;
-            }
-
-            if (target.user.bot) {
-                await interaction.editReply('❌ You cannot flag a bot.');
-                return;
-            }
-
-            // ── Protect admins and the server owner ───────────────────────────
-
-            if (target.id === interaction.guild!.ownerId) {
-                await interaction.editReply('❌ You cannot flag the server owner.');
-                return;
-            }
-
-            if (target.permissions.has(PermissionFlagsBits.Administrator)) {
-                await interaction.editReply('❌ You cannot flag an administrator.');
-                return;
-            }
-
-            // ── Hierarchy check ───────────────────────────────────────────────
-
-            const invoker = interaction.member as GuildMember;
-            if (target.roles.highest.position >= invoker.roles.highest.position) {
-                await interaction.editReply('❌ You cannot flag a member with an equal or higher role than your own.');
+            if (guardError) {
+                await interaction.editReply(guardError);
                 return;
             }
 
@@ -74,13 +52,13 @@ const command: BotCommand = {
             const existing = await prisma.flag.findFirst({
                 where: {
                     guildId: interaction.guildId!,
-                    userId:  target.id,
+                    userId:  target!.id,
                     active:  true,
                 },
             });
 
             if (existing) {
-                await interaction.editReply(`❌ **${target.user.username}** is already flagged.`);
+                await interaction.editReply(`❌ **${target!.user.username}** is already flagged.`);
                 return;
             }
 
@@ -89,7 +67,7 @@ const command: BotCommand = {
             const flag = await prisma.flag.create({
                 data: {
                     guildId:     interaction.guildId!,
-                    userId:      target.id,
+                    userId:      target!.id,
                     moderatorId: interaction.user.id,
                     reason,
                 },
@@ -100,21 +78,21 @@ const command: BotCommand = {
             const flagRoleId = config.guild.roles.flag;
             if (flagRoleId) {
                 try {
-                    await target.roles.add(flagRoleId, `Flagged by ${interaction.user.username}: ${reason}`);
+                    await target!.roles.add(flagRoleId, `Flagged by ${interaction.user.username}: ${reason}`);
                 } catch (roleErr) {
-                    log.warn(`Failed to assign flag role (${flagRoleId}) to ${target.user.username}:`, roleErr);
+                    log.warn(`Failed to assign flag role (${flagRoleId}) to ${target!.user.username}:`, roleErr);
                 }
             } else {
                 log.warn('No FLAG_ROLE set in .env — flag role was not assigned.');
             }
 
-            await interaction.editReply(`✅ **${target.user.username}** has been flagged for staff watch.`);
+            await interaction.editReply(`✅ **${target!.user.username}** has been flagged for staff watch.`);
 
             // ── Step 3: Log to staff log ──────────────────────────────────────
 
             await sendLog('staffLog', Embeds.modAction({
                 action:    'Flag',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,

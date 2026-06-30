@@ -15,9 +15,10 @@ const log = createLogger('BotStatus');
 //   maintenance → set by the bridge server / PM2 watcher when the process is down
 //
 // ⚠️  Discord rate-limits channel NAME changes to 2 per 10 minutes per channel.
-//     The bot only changes the name on startup and shutdown so it never hits this.
-//     If your bridge server polls frequently, only fire the PATCH when the status
-//     has actually changed — cache the last known state and skip if it's the same.
+//     We guard against this by caching the last status we successfully wrote
+//     and skipping the network call entirely when a caller asks to set the
+//     same status again (e.g. a bridge server polling on an interval). Pass
+//     `force: true` to bypass the cache — useful for a manual re-sync command.
 //
 // Requires: STATUS_CHANNEL_ID in .env (optional — silently skipped if absent)
 // Requires: Quill has Manage Channel permission on the status voice channel
@@ -36,7 +37,12 @@ const BADGE_TEXT: Record<BotStatusType, string> = {
     maintenance: 'Quill is under Maintenance',
 };
 
-export async function setBotStatus(status: BotStatusType): Promise<void> {
+// Tracks the last status we successfully wrote to the channel NAME (the
+// rate-limited call). Only updated on a successful PATCH so a transient
+// failure doesn't permanently block retries on the next call.
+let lastWrittenStatus: BotStatusType | null = null;
+
+export async function setBotStatus(status: BotStatusType, force = false): Promise<void> {
     const channelId = process.env.STATUS_CHANNEL_ID;
     const token     = process.env.DISCORD_TOKEN;
 
@@ -48,6 +54,11 @@ export async function setBotStatus(status: BotStatusType): Promise<void> {
     // Token is validated at boot; this is just a safety guard.
     if (!token) return;
 
+    if (!force && lastWrittenStatus === status) {
+        log.debug(`Status already "${status}" — skipping redundant update (rate-limit guard).`);
+        return;
+    }
+
     const rest = new REST({ version: '10' }).setToken(token);
 
     // ── Update channel name (colored circle emoji) ────────────────────────────
@@ -58,9 +69,12 @@ export async function setBotStatus(status: BotStatusType): Promise<void> {
             { body: { name: CHANNEL_NAME[status] } },
         );
         log.info(`Status channel name updated → ${CHANNEL_NAME[status]}`);
+        lastWrittenStatus = status;
     } catch (err) {
         // Common causes: missing Manage Channel permission, wrong channel ID,
-        // or hitting the 2/10min name-change rate limit.
+        // or hitting the 2/10min name-change rate limit. Deliberately leaves
+        // lastWrittenStatus untouched so the next call retries instead of
+        // silently believing the change went through.
         log.warn('Failed to update status channel name:', err);
     }
 

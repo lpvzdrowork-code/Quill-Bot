@@ -3,6 +3,7 @@ import type { Interaction } from 'discord.js';
 import type { BotCommand } from '../types/index.js';
 import { client } from '../client.js';
 import { createLogger } from '../utils/logger.js';
+import { checkCooldown } from '../utils/cooldown.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -20,6 +21,15 @@ const event: BotEvent = {
         if (!command) {
             log.warn(`No command found for /${interaction.commandName}.`);
             await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+            return;
+        }
+
+        const remainingCooldown = checkCooldown(interaction.commandName, interaction.user.id);
+        if (remainingCooldown !== null) {
+            await interaction.reply({
+                content:   `⏳ Please wait **${remainingCooldown}s** before using \`/${interaction.commandName}\` again.`,
+                ephemeral: true,
+            });
             return;
         }
 

@@ -4,6 +4,7 @@ import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Ban');
 
@@ -37,59 +38,45 @@ const command: BotCommand = {
         const reason        = interaction.options.getString('reason') ?? 'No reason provided.';
         const deleteSeconds = (interaction.options.getInteger('delete_messages') ?? 0) * 86400;
 
-        if (!target || typeof target.bannable === 'undefined') {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel: 'ban',
+            capability:  'bannable',
+        });
 
-        if (!target.bannable) {
-            await interaction.editReply('❌ I cannot ban that member. They may have a higher role than me.');
-            return;
-        }
-
-        if (target.id === interaction.user.id) {
-            await interaction.editReply('❌ You cannot ban yourself.');
-            return;
-        }
-
-        if (target.user.bot) {
-            await interaction.editReply('❌ You cannot ban a bot.');
-            return;
-        }
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot ban a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
         try {
             try {
-                await target.send({ embeds: [Embeds.modAction({
+                await target!.send({ embeds: [Embeds.modAction({
                     action:    'Ban',
-                    target:    target.user,
+                    target:    target!.user,
                     moderator: interaction.user,
                     reason,
                 })] });
             } catch { /* DMs closed */ }
 
-            await target.ban({ reason, deleteMessageSeconds: deleteSeconds });
+            await target!.ban({ reason, deleteMessageSeconds: deleteSeconds });
 
             await prisma.ban.create({
                 data: {
                     guildId:     interaction.guildId!,
-                    userId:      target.id,
+                    userId:      target!.id,
                     moderatorId: interaction.user.id,
                     reason,
                     deleteDays: deleteSeconds > 0 ? deleteSeconds / 86400 : 0,
                 },
             });
 
-            await interaction.editReply(`✅ **${target.user.username}** has been banned.`);
+            await interaction.editReply(`✅ **${target!.user.username}** has been banned.`);
 
             await sendLog('staffLog', Embeds.modAction({
                 action:    'Ban',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,

@@ -4,6 +4,7 @@ import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Warn');
 
@@ -29,24 +30,14 @@ const command: BotCommand = {
         const target = interaction.options.getMember('target') as GuildMember | null;
         const reason = interaction.options.getString('reason', true);
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel: 'warn',
+        });
 
-        if (target.id === interaction.user.id) {
-            await interaction.editReply('❌ You cannot warn yourself.');
-            return;
-        }
-
-        if (target.user.bot) {
-            await interaction.editReply('❌ You cannot warn a bot.');
-            return;
-        }
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot warn a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
@@ -54,31 +45,31 @@ const command: BotCommand = {
             const warn = await prisma.warn.create({
                 data: {
                     guildId:     interaction.guildId!,
-                    userId:      target.id,
+                    userId:      target!.id,
                     moderatorId: interaction.user.id,
                     reason,
                 },
             });
 
             const warnCount = await prisma.warn.count({
-                where: { guildId: interaction.guildId!, userId: target.id },
+                where: { guildId: interaction.guildId!, userId: target!.id },
             });
 
             try {
-                await target.send({ embeds: [Embeds.modAction({
+                await target!.send({ embeds: [Embeds.modAction({
                     action:    'Warn',
-                    target:    target.user,
+                    target:    target!.user,
                     moderator: interaction.user,
                     reason,
                     extra: { 'Total Warnings': String(warnCount) },
                 })] });
             } catch { /* DMs closed */ }
 
-            await interaction.editReply(`✅ **${target.user.username}** has been warned. They now have **${warnCount}** warning(s).`);
+            await interaction.editReply(`✅ **${target!.user.username}** has been warned. They now have **${warnCount}** warning(s).`);
 
             await sendLog('staffLog', Embeds.modAction({
                 action:    'Warn',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,

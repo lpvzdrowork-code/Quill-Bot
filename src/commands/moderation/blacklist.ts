@@ -6,6 +6,7 @@ import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Blacklist');
 
@@ -33,43 +34,17 @@ const command: BotCommand = {
 
         // ── Validation ────────────────────────────────────────────────────────
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel:           'blacklist',
+            capability:            'manageable',
+            capabilityLabel:       'modify',
+            protectOwnerAndAdmins: true,
+        });
 
-        if (!target.manageable) {
-            await interaction.editReply('❌ I cannot modify that member. They may have a higher role than me.');
-            return;
-        }
-
-        if (target.id === interaction.user.id) {
-            await interaction.editReply('❌ You cannot blacklist yourself.');
-            return;
-        }
-
-        if (target.user.bot) {
-            await interaction.editReply('❌ You cannot blacklist a bot.');
-            return;
-        }
-
-        // ── Protect admins and the server owner ───────────────────────────────
-
-        if (target.id === interaction.guild!.ownerId) {
-            await interaction.editReply('❌ You cannot blacklist the server owner.');
-            return;
-        }
-
-        if (target.permissions.has(PermissionFlagsBits.Administrator)) {
-            await interaction.editReply('❌ You cannot blacklist an administrator.');
-            return;
-        }
-
-        // ── Hierarchy check ───────────────────────────────────────────────────
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot blacklist a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
@@ -78,13 +53,13 @@ const command: BotCommand = {
         const existing = await prisma.blacklist.findFirst({
             where: {
                 guildId: interaction.guildId!,
-                userId:  target.id,
+                userId:  target!.id,
                 active:  true,
             },
         });
 
         if (existing) {
-            await interaction.editReply(`❌ **${target.user.username}** is already blacklisted.`);
+            await interaction.editReply(`❌ **${target!.user.username}** is already blacklisted.`);
             return;
         }
 
@@ -93,9 +68,9 @@ const command: BotCommand = {
         try {
             // DM the user before assigning the role so they can still receive it
             try {
-                await target.send({ embeds: [Embeds.modAction({
+                await target!.send({ embeds: [Embeds.modAction({
                     action:    'Blacklist',
-                    target:    target.user,
+                    target:    target!.user,
                     moderator: interaction.user,
                     reason,
                 })] });
@@ -111,24 +86,24 @@ const command: BotCommand = {
                 return;
             }
 
-            await target.roles.add(blacklistRoleId, `Blacklisted by ${interaction.user.username}: ${reason}`);
+            await target!.roles.add(blacklistRoleId, `Blacklisted by ${interaction.user.username}: ${reason}`);
 
             // ── Step B: Write the audit record to the database ────────────────
 
             await prisma.blacklist.create({
                 data: {
                     guildId:     interaction.guildId!,
-                    userId:      target.id,
+                    userId:      target!.id,
                     moderatorId: interaction.user.id,
                     reason,
                 },
             });
 
-            await interaction.editReply(`✅ **${target.user.username}** has been blacklisted.`);
+            await interaction.editReply(`✅ **${target!.user.username}** has been blacklisted.`);
 
             await sendLog('staffLog', Embeds.modAction({
                 action:    'Blacklist',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,
@@ -140,7 +115,7 @@ const command: BotCommand = {
             // and P2002 here means we lost that race. Treat it the same as the
             // "already blacklisted" case rather than a generic failure.
             if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-                await interaction.editReply(`❌ **${target.user.username}** is already blacklisted.`);
+                await interaction.editReply(`❌ **${target!.user.username}** is already blacklisted.`);
                 return;
             }
 
