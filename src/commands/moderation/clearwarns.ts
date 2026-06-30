@@ -34,6 +34,16 @@ const command: BotCommand = {
             return;
         }
 
+        if (target.id === interaction.user.id) {
+            await interaction.editReply('❌ You cannot clear your own warnings.');
+            return;
+        }
+
+        if (target.user.bot) {
+            await interaction.editReply('❌ Bots cannot have warnings.');
+            return;
+        }
+
         const invoker = interaction.member as GuildMember;
         if (target.roles.highest.position >= invoker.roles.highest.position) {
             await interaction.editReply('❌ You cannot clear warnings for a member with an equal or higher role than your own.');

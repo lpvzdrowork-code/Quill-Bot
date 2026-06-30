@@ -42,6 +42,14 @@ const command: BotCommand = {
             return;
         }
 
+        // ── Hierarchy check ───────────────────────────────────────────────────
+
+        const invoker = interaction.member as GuildMember;
+        if (target.roles.highest.position >= invoker.roles.highest.position) {
+            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+            return;
+        }
+
         // ── Check for an active blacklist ─────────────────────────────────────
 
         const blacklistRoleId = config.guild.roles.blacklist;
@@ -57,14 +65,6 @@ const command: BotCommand = {
 
         if (!activeRecord && !hasBlacklistRole) {
             await interaction.editReply(`❌ **${target.user.username}** is not currently blacklisted.`);
-            return;
-        }
-
-        // ── Hierarchy check ───────────────────────────────────────────────────
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
             return;
         }
 

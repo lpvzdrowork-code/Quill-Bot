@@ -94,6 +94,9 @@ model Blacklist {
 
   @@index([guildId, userId])
   @@index([guildId, userId, active])
+  // NOTE: a partial unique index (one active Blacklist per guildId+userId) is
+  // enforced via raw SQL in migration 20260629230000_add_active_unique_constraints,
+  // since Prisma's schema syntax cannot express a partial/filtered unique index.
 }
 
 // ─── Flag ─────────────────────────────────────────────────────────────────────
@@ -115,4 +118,7 @@ model Flag {
 
   @@index([guildId, userId])
   @@index([guildId, userId, active])
+  // NOTE: a partial unique index (one active Flag per guildId+userId) is
+  // enforced via raw SQL in migration 20260629230000_add_active_unique_constraints,
+  // since Prisma's schema syntax cannot express a partial/filtered unique index.
 }

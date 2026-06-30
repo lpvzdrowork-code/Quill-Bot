@@ -40,17 +40,17 @@ const command: BotCommand = {
             return;
         }
 
+        const invoker = interaction.member as GuildMember;
+        if (target.roles.highest.position >= invoker.roles.highest.position) {
+            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+            return;
+        }
+
         const timeoutRoleId  = config.guild.roles.timeout;
         const hasTimeoutRole = timeoutRoleId ? target.roles.cache.has(timeoutRoleId) : false;
 
         if (!target.isCommunicationDisabled() && !hasTimeoutRole) {
             await interaction.editReply(`❌ **${target.user.username}** is not currently timed out.`);
-            return;
-        }
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
             return;
         }
 

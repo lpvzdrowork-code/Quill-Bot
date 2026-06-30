@@ -3,6 +3,7 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -49,6 +50,18 @@ const command: BotCommand = {
 
         if (target.user.bot) {
             await interaction.editReply('❌ You cannot blacklist a bot.');
+            return;
+        }
+
+        // ── Protect admins and the server owner ───────────────────────────────
+
+        if (target.id === interaction.guild!.ownerId) {
+            await interaction.editReply('❌ You cannot blacklist the server owner.');
+            return;
+        }
+
+        if (target.permissions.has(PermissionFlagsBits.Administrator)) {
+            await interaction.editReply('❌ You cannot blacklist an administrator.');
             return;
         }
 
@@ -121,6 +134,15 @@ const command: BotCommand = {
             }));
 
         } catch (err) {
+            // A concurrent /blacklist on the same user can race past the findFirst()
+            // check above; the DB-level partial unique index is the real guard,
+            // and P2002 here means we lost that race. Treat it the same as the
+            // "already blacklisted" case rather than a generic failure.
+            if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+                await interaction.editReply(`❌ **${target.user.username}** is already blacklisted.`);
+                return;
+            }
+
             log.error('Blacklist command failed:', err);
             await interaction.editReply('❌ Failed to blacklist that member. The action was not completed.');
         }

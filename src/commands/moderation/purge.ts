@@ -38,17 +38,46 @@ const command: BotCommand = {
         }
 
         try {
-            // Fetch more than requested when filtering by user so we can hit the target count
-            const fetchCount = target ? Math.min(amount * 5, 100) : amount;
-            const messages = await channel.messages.fetch({ limit: fetchCount });
-
-            const toDelete = target
-                ? [...messages.values()].filter(m => m.author.id === target.id).slice(0, amount)
-                : [...messages.values()];
-
-            // Discord only allows bulk delete on messages under 14 days old
             const twoWeeksAgo = Date.now() - 14 * 24 * 60 * 60 * 1000;
-            const deletable = toDelete.filter(m => m.createdTimestamp > twoWeeksAgo);
+            const deletable: import('discord.js').Message[] = [];
+
+            if (target) {
+                // Filtering by user: a single 100-message fetch can't guarantee
+                // `amount` matches if the target's messages are sparse in this
+                // channel, so walk backward through history in pages until we
+                // have enough matches, hit the 14-day bulk-delete cutoff, or run
+                // out of channel history. Capped at 500 scanned messages so a
+                // channel where the target rarely posts can't turn this into an
+                // unbounded fetch loop.
+                const MAX_SCANNED = 500;
+                let scanned = 0;
+                let before: string | undefined;
+
+                while (deletable.length < amount && scanned < MAX_SCANNED) {
+                    const page = await channel.messages.fetch({ limit: 100, before });
+                    if (page.size === 0) break;
+
+                    for (const message of page.values()) {
+                        scanned++;
+                        if (message.createdTimestamp <= twoWeeksAgo) {
+                            // Messages get older as we page back — once we cross
+                            // the cutoff, nothing further back will be deletable.
+                            scanned = MAX_SCANNED;
+                            break;
+                        }
+                        if (message.author.id === target.id) {
+                            deletable.push(message);
+                            if (deletable.length >= amount) break;
+                        }
+                    }
+
+                    before = [...page.values()].pop()?.id;
+                    if (page.size < 100) break; // reached the start of the channel
+                }
+            } else {
+                const messages = await channel.messages.fetch({ limit: amount });
+                deletable.push(...[...messages.values()].filter(m => m.createdTimestamp > twoWeeksAgo));
+            }
 
             if (deletable.length === 0) {
                 await interaction.editReply('❌ No deletable messages found. Messages older than 14 days cannot be bulk deleted.');

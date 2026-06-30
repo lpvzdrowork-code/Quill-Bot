@@ -43,6 +43,14 @@ const command: BotCommand = {
                 return;
             }
 
+            // ── Hierarchy check ─────────────────────────────────────────
+
+            const invoker = interaction.member as GuildMember;
+            if (target.roles.highest.position >= invoker.roles.highest.position) {
+                await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+                return;
+            }
+
             // ── Check for an active flag ──────────────────────────────────────
 
             const flagRoleId = config.guild.roles.flag;
@@ -62,12 +70,6 @@ const command: BotCommand = {
             }
 
             // ── Hierarchy check ───────────────────────────────────────────────
-
-            const invoker = interaction.member as GuildMember;
-            if (target.roles.highest.position >= invoker.roles.highest.position) {
-                await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
-                return;
-            }
 
             // ── Remove the flag role ──────────────────────────────────────────
 

@@ -3,6 +3,7 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
+import { Prisma } from '../../generated/prisma/client.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -120,6 +121,17 @@ const command: BotCommand = {
             }));
 
         } catch (err) {
+            // Same race-condition guard as blacklist.ts: a concurrent /flag on the
+            // same user can pass the findFirst() check above before either commits.
+            // The DB-level partial unique index catches it; P2002 means we lost
+            // that race, so report it the same as the normal "already flagged" case.
+            // (target is scoped inside the try block above, so we use a generic
+            // wording here rather than referencing it.)
+            if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+                await interaction.editReply('❌ That member is already flagged.');
+                return;
+            }
+
             log.error('Flag command failed:', err);
             await interaction.editReply('❌ Failed to flag that member. The action was not completed.');
         }
