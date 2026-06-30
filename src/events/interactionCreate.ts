@@ -5,6 +5,7 @@ import { client } from '../client.js';
 import { createLogger } from '../utils/logger.js';
 import { checkCooldown } from '../utils/cooldown.js';
 import { isAllowedCommandChannel, getCommandChannelIds } from '../utils/guildConfig.js';
+import { getGuildSuspensionStatus } from '../utils/guildSuspension.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { Embeds } from '../utils/embeds.js';
 import type { BotEvent } from '../utils/eventLoader.js';
@@ -25,6 +26,22 @@ const event: BotEvent = {
             log.warn(`No command found for /${interaction.commandName}.`);
             await interaction.reply({ content: 'Unknown command.', ephemeral: true });
             return;
+        }
+
+        // A suspended guild is blocked from every command, no exceptions —
+        // this is the dashboard's kill switch, so it has to be unconditional.
+        if (interaction.guildId) {
+            const { suspended, reason } = await getGuildSuspensionStatus(interaction.guildId);
+
+            if (suspended) {
+                await interaction.reply({
+                    content: reason
+                        ? `❌ This server has been suspended from using Quill.\nReason: ${reason}`
+                        : '❌ This server has been suspended from using Quill.',
+                    ephemeral: true,
+                });
+                return;
+            }
         }
 
         const remainingCooldown = checkCooldown(interaction.commandName, interaction.user.id);
@@ -67,9 +84,6 @@ const event: BotEvent = {
                 await interaction.reply(message);
             }
 
-            // Surface the failure to staff via message-logs — this is the one
-            // event type the "bot logs" category was always meant for, it just
-            // never had a call site wired up to it until now.
             if (interaction.guildId) {
                 await sendLog(interaction.guildId, 'message-logs', Embeds.error(
                     `\`/${interaction.commandName}\` threw an error for ${interaction.user}.\n\`\`\`${String(err instanceof Error ? err.message : err).slice(0, 500)}\`\`\``,

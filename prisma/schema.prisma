@@ -10,6 +10,21 @@ datasource db {
   provider = "postgresql"
 }
 
+// ─── Guild ────────────────────────────────────────────────────────────────────
+// Tracks every guild Quill is currently installed in. One row per guild,
+// created on guildCreate, name refreshed on guildUpdate. `suspended` is
+// checked before any moderation command executes (see interactionCreate.ts)
+// and is toggled exclusively from the admin dashboard — never by the bot.
+
+model Guild {
+  id              String    @id // Discord guild ID — natural key, not a cuid
+  name            String?
+  joinedAt        DateTime  @default(now())
+  suspended       Boolean   @default(false)
+  suspendedAt     DateTime?
+  suspendedReason String?
+}
+
 // ─── Warn ─────────────────────────────────────────────────────────────────────
 // Stores moderation warnings issued to users.
 
