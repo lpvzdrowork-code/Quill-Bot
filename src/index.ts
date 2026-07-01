@@ -45,6 +45,17 @@ process.on('unhandledRejection', (reason) => {
     logger.error('Unhandled promise rejection:', reason);
 });
 
+// ─── Uncaught Exception Guard ─────────────────────────────────────────────────
+// Node considers process state undefined after an uncaughtException, so unlike
+// unhandledRejection above, this is not safe to just log and continue from.
+// Log it, then exit non-zero so PM2 (see ecosystem.config.cjs) restarts us with
+// a clean process rather than limping along in a possibly-corrupted state.
+
+process.on('uncaughtException', (err) => {
+    logger.error('Uncaught exception — exiting for a clean restart:', err);
+    process.exit(1);
+});
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 
 async function boot(): Promise<void> {
