@@ -16,13 +16,17 @@ const event: BotEvent = {
     async execute(...args) {
         const guild = args[0] as Guild;
 
-        await prisma.guild.upsert({
-            where: { id: guild.id },
-            update: { name: guild.name },
-            create: { id: guild.id, name: guild.name },
-        });
+        try {
+            await prisma.guild.upsert({
+                where: { id: guild.id },
+                update: { name: guild.name },
+                create: { id: guild.id, name: guild.name },
+            });
 
-        log.info(`Registered guild ${guild.name} (${guild.id}).`);
+            log.info(`Registered guild ${guild.name} (${guild.id}).`);
+        } catch (err) {
+            log.error(`Failed to register guild ${guild.name} (${guild.id}):`, err);
+        }
     },
 };
 
