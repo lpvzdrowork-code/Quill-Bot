@@ -5,6 +5,7 @@ import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Untimeout');
 
@@ -30,53 +31,55 @@ const command: BotCommand = {
         const target = interaction.options.getMember('target') as GuildMember | null;
         const reason = interaction.options.getString('reason') ?? 'No reason provided.';
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        // ── Validation ────────────────────────────────────────────────────────
+        // Routed through the shared guard (see moderationGuard.ts) so this stays
+        // in lockstep with ban/kick/timeout/warn/flag/blacklist rather than
+        // drifting as its own hand-rolled copy.
 
-        if (!target.moderatable) {
-            await interaction.editReply('❌ I cannot modify that member. They may have a higher role than me.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel:     'untimeout',
+            capability:      'moderatable',
+            capabilityLabel: 'modify',
+        });
 
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
         const timeoutRoleId  = config.guild.roles.timeout;
-        const hasTimeoutRole = timeoutRoleId ? target.roles.cache.has(timeoutRoleId) : false;
+        const hasTimeoutRole = timeoutRoleId ? target!.roles.cache.has(timeoutRoleId) : false;
 
-        if (!target.isCommunicationDisabled() && !hasTimeoutRole) {
-            await interaction.editReply(`❌ **${target.user.username}** is not currently timed out.`);
+        if (!target!.isCommunicationDisabled() && !hasTimeoutRole) {
+            await interaction.editReply(`❌ **${target!.user.username}** is not currently timed out.`);
             return;
         }
 
         try {
-            if (target.isCommunicationDisabled()) {
-                await target.timeout(null, reason);
+            if (target!.isCommunicationDisabled()) {
+                await target!.timeout(null, reason);
             }
 
             if (timeoutRoleId && hasTimeoutRole) {
                 try {
-                    await target.roles.remove(timeoutRoleId, 'Timeout role removed by Quill');
+                    await target!.roles.remove(timeoutRoleId, 'Timeout role removed by Quill');
                 } catch {
-                    log.warn(`Failed to remove timeout role (${timeoutRoleId}) from ${target.user.username}.`);
+                    log.warn(`Failed to remove timeout role (${timeoutRoleId}) from ${target!.user.username}.`);
                 }
             }
 
             await prisma.timeout.updateMany({
-                where:  { guildId: interaction.guildId!, userId: target.id, endedAt: null },
+                where:  { guildId: interaction.guildId!, userId: target!.id, endedAt: null },
                 data:   { endedAt: new Date() },
             });
 
-            await interaction.editReply(`✅ Timeout removed from **${target.user.username}**.`);
+            await interaction.editReply(`✅ Timeout removed from **${target!.user.username}**.`);
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Untimeout',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,

@@ -4,6 +4,7 @@ import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('ClearWarns');
 
@@ -29,24 +30,20 @@ const command: BotCommand = {
         const target = interaction.options.getMember('target') as GuildMember | null;
         const warnId = interaction.options.getString('warn_id')?.trim();
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        // ── Validation ────────────────────────────────────────────────────────
+        // Routed through the shared guard (see moderationGuard.ts) so this stays
+        // in lockstep with ban/kick/timeout/warn/flag/blacklist rather than
+        // drifting as its own hand-rolled copy. No `capability` here — clearing
+        // warnings never touches a Discord-side permission, only the DB.
 
-        if (target.id === interaction.user.id) {
-            await interaction.editReply('❌ You cannot clear your own warnings.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel: 'clear warnings for',
+        });
 
-        if (target.user.bot) {
-            await interaction.editReply('❌ Bots cannot have warnings.');
-            return;
-        }
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot clear warnings for a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
@@ -56,18 +53,18 @@ const command: BotCommand = {
             try {
                 const warn = await prisma.warn.findUnique({ where: { id: warnId } });
 
-                if (!warn || warn.guildId !== interaction.guildId || warn.userId !== target.id) {
+                if (!warn || warn.guildId !== interaction.guildId || warn.userId !== target!.id) {
                     await interaction.editReply('❌ That warning ID was not found for this user.');
                     return;
                 }
 
                 await prisma.warn.delete({ where: { id: warnId } });
 
-                await interaction.editReply(`✅ Warning \`${warnId}\` has been removed from **${target.user.username}**.`);
+                await interaction.editReply(`✅ Warning \`${warnId}\` has been removed from **${target!.user.username}**.`);
 
                 await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                     action:    'Warn Removed',
-                    target:    target.user,
+                    target:    target!.user,
                     moderator: interaction.user,
                     reason:    `Removed warning ID: \`${warnId}\``,
                     guild:     interaction.guild ?? undefined,
@@ -85,19 +82,19 @@ const command: BotCommand = {
 
         try {
             const { count } = await prisma.warn.deleteMany({
-                where: { guildId: interaction.guildId!, userId: target.id },
+                where: { guildId: interaction.guildId!, userId: target!.id },
             });
 
             if (count === 0) {
-                await interaction.editReply(`✅ **${target.user.username}** has no warnings to clear.`);
+                await interaction.editReply(`✅ **${target!.user.username}** has no warnings to clear.`);
                 return;
             }
 
-            await interaction.editReply(`✅ Cleared **${count}** warning(s) from **${target.user.username}**.`);
+            await interaction.editReply(`✅ Cleared **${count}** warning(s) from **${target!.user.username}**.`);
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Warns Cleared',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason:    `All ${count} warning(s) cleared.`,
                 guild:     interaction.guild ?? undefined,

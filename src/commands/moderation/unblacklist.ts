@@ -5,6 +5,7 @@ import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Unblacklist');
 
@@ -31,40 +32,38 @@ const command: BotCommand = {
         const reason = interaction.options.getString('reason') ?? 'No reason provided.';
 
         // ── Validation ────────────────────────────────────────────────────────
+        // Routed through the shared guard (see moderationGuard.ts) so this stays
+        // in lockstep with ban/kick/timeout/warn/flag/blacklist rather than
+        // drifting as its own hand-rolled copy.
 
-        if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
-            return;
-        }
+        const guardError = validateModerationTarget({
+            interaction,
+            target,
+            actionLabel:     'unblacklist',
+            capability:      'manageable',
+            capabilityLabel: 'modify',
+        });
 
-        if (!target.manageable) {
-            await interaction.editReply('❌ I cannot modify that member. They may have a higher role than me.');
-            return;
-        }
-
-        // ── Hierarchy check ───────────────────────────────────────────────────
-
-        const invoker = interaction.member as GuildMember;
-        if (target.roles.highest.position >= invoker.roles.highest.position) {
-            await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+        if (guardError) {
+            await interaction.editReply(guardError);
             return;
         }
 
         // ── Check for an active blacklist ─────────────────────────────────────
 
         const blacklistRoleId = config.guild.roles.blacklist;
-        const hasBlacklistRole = blacklistRoleId ? target.roles.cache.has(blacklistRoleId) : false;
+        const hasBlacklistRole = blacklistRoleId ? target!.roles.cache.has(blacklistRoleId) : false;
 
         const activeRecord = await prisma.blacklist.findFirst({
             where: {
                 guildId: interaction.guildId!,
-                userId:  target.id,
+                userId:  target!.id,
                 active:  true,
             },
         });
 
         if (!activeRecord && !hasBlacklistRole) {
-            await interaction.editReply(`❌ **${target.user.username}** is not currently blacklisted.`);
+            await interaction.editReply(`❌ **${target!.user.username}** is not currently blacklisted.`);
             return;
         }
 
@@ -74,7 +73,7 @@ const command: BotCommand = {
             // ── Remove the blacklist role ─────────────────────────────────────
 
             if (blacklistRoleId && hasBlacklistRole) {
-                await target.roles.remove(blacklistRoleId, `Blacklist lifted by ${interaction.user.username}: ${reason}`);
+                await target!.roles.remove(blacklistRoleId, `Blacklist lifted by ${interaction.user.username}: ${reason}`);
             }
 
             // ── Mark the record as revoked (preserves audit history) ──────────
@@ -90,11 +89,11 @@ const command: BotCommand = {
                 });
             }
 
-            await interaction.editReply(`✅ Blacklist removed from **${target.user.username}**.`);
+            await interaction.editReply(`✅ Blacklist removed from **${target!.user.username}**.`);
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Unblacklist',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,

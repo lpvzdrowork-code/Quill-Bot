@@ -5,6 +5,7 @@ import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
+import { validateModerationTarget } from '../../utils/moderationGuard.js';
 
 const log = createLogger('Unflag');
 
@@ -32,49 +33,45 @@ const command: BotCommand = {
             const reason = interaction.options.getString('reason') ?? 'No reason provided.';
 
             // ── Validation ────────────────────────────────────────────────────
+            // Routed through the shared guard (see moderationGuard.ts) so this
+            // stays in lockstep with ban/kick/timeout/warn/flag/blacklist rather
+            // than drifting as its own hand-rolled copy.
 
-            if (!target) {
-                await interaction.editReply('❌ That user could not be found in this server.');
-                return;
-            }
+            const guardError = validateModerationTarget({
+                interaction,
+                target,
+                actionLabel:     'unflag',
+                capability:      'manageable',
+                capabilityLabel: 'modify',
+            });
 
-            if (!target.manageable) {
-                await interaction.editReply('❌ I cannot modify that member. They may have a higher role than me.');
-                return;
-            }
-
-            // ── Hierarchy check ─────────────────────────────────────────
-
-            const invoker = interaction.member as GuildMember;
-            if (target.roles.highest.position >= invoker.roles.highest.position) {
-                await interaction.editReply('❌ You cannot modify a member with an equal or higher role than your own.');
+            if (guardError) {
+                await interaction.editReply(guardError);
                 return;
             }
 
             // ── Check for an active flag ──────────────────────────────────────
 
             const flagRoleId = config.guild.roles.flag;
-            const hasFlagRole = flagRoleId ? target.roles.cache.has(flagRoleId) : false;
+            const hasFlagRole = flagRoleId ? target!.roles.cache.has(flagRoleId) : false;
 
             const activeRecord = await prisma.flag.findFirst({
                 where: {
                     guildId: interaction.guildId!,
-                    userId:  target.id,
+                    userId:  target!.id,
                     active:  true,
                 },
             });
 
             if (!activeRecord && !hasFlagRole) {
-                await interaction.editReply(`❌ **${target.user.username}** is not currently flagged.`);
+                await interaction.editReply(`❌ **${target!.user.username}** is not currently flagged.`);
                 return;
             }
-
-            // ── Hierarchy check ───────────────────────────────────────────────
 
             // ── Remove the flag role ──────────────────────────────────────────
 
             if (flagRoleId && hasFlagRole) {
-                await target.roles.remove(flagRoleId, `Flag lifted by ${interaction.user.username}: ${reason}`);
+                await target!.roles.remove(flagRoleId, `Flag lifted by ${interaction.user.username}: ${reason}`);
             }
 
             // ── Mark the DB record as revoked (preserves audit history) ───────
@@ -90,13 +87,13 @@ const command: BotCommand = {
                 });
             }
 
-            await interaction.editReply(`✅ Flag removed from **${target.user.username}**.`);
+            await interaction.editReply(`✅ Flag removed from **${target!.user.username}**.`);
 
             // ── Log to staff log ──────────────────────────────────────────────
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Unflag',
-                target:    target.user,
+                target:    target!.user,
                 moderator: interaction.user,
                 reason,
                 guild:     interaction.guild ?? undefined,
