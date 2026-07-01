@@ -56,7 +56,8 @@ async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]
 
     } catch (err) {
         log.error('Failed to post embed:', err);
-        await interaction.editReply('❌ Failed to post that embed. Check the image URL and try again.');
+        const detail = err instanceof Error ? err.message : String(err);
+        await interaction.editReply(`❌ Failed to post that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``);
     }
 }
 
@@ -102,6 +103,7 @@ async function handleEdit(interaction: ModalSubmitInteraction, parts: string[]):
 
     } catch (err) {
         log.error('Failed to edit embed:', err);
-        await interaction.editReply('❌ Failed to update that embed. It may have been deleted.');
+        const detail = err instanceof Error ? err.message : String(err);
+        await interaction.editReply(`❌ Failed to update that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``);
     }
 }
