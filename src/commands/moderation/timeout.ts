@@ -61,7 +61,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -101,7 +101,7 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been timed out for **${durationKey}**.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been timed out for **${durationKey}**.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Timeout',
@@ -115,7 +115,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Timeout command failed:', err);
-            await interaction.editReply('❌ Failed to timeout that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to timeout that member. The action was not completed.')] });
         }
     },
 };

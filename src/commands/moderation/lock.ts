@@ -41,7 +41,7 @@ const command: BotCommand = {
         const channel = (interaction.options.getChannel('channel') ?? interaction.channel) as TextChannel;
 
         if (!channel || channel.type !== ChannelType.GuildText) {
-            await interaction.editReply('❌ Target must be a text channel.');
+            await interaction.editReply({ embeds: [Embeds.error('Target must be a text channel.')] });
             return;
         }
 
@@ -57,7 +57,7 @@ const command: BotCommand = {
                 ? `🔒 ${channel} has been locked.`
                 : `🔓 ${channel} has been unlocked.`;
 
-            await interaction.editReply(`✅ ${status}`);
+            await interaction.editReply({ embeds: [Embeds.success(status)] });
 
             // Also send a visible notice in the affected channel
             // Isolated in its own try-catch so a send failure doesn't overwrite the ✅ reply above
@@ -81,7 +81,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Lock command failed:', err);
-            await interaction.editReply('❌ Failed to modify channel permissions. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to modify channel permissions. The action was not completed.')] });
         }
     },
 };

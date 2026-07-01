@@ -45,7 +45,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -53,7 +53,7 @@ const command: BotCommand = {
         const hasTimeoutRole = timeoutRoleId ? target!.roles.cache.has(timeoutRoleId) : false;
 
         if (!target!.isCommunicationDisabled() && !hasTimeoutRole) {
-            await interaction.editReply(`❌ **${target!.user.username}** is not currently timed out.`);
+            await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is not currently timed out.`)] });
             return;
         }
 
@@ -75,7 +75,7 @@ const command: BotCommand = {
                 data:   { endedAt: new Date() },
             });
 
-            await interaction.editReply(`✅ Timeout removed from **${target!.user.username}**.`);
+            await interaction.editReply({ embeds: [Embeds.success(`Timeout removed from **${target!.user.username}**.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Untimeout',
@@ -87,7 +87,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Untimeout command failed:', err);
-            await interaction.editReply('❌ Failed to remove the timeout. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to remove the timeout. The action was not completed.')] });
         }
     },
 };

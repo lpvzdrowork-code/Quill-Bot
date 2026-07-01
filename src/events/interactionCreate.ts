@@ -4,6 +4,7 @@ import type { BotCommand } from '../types/index.js';
 import { client } from '../client.js';
 import { createLogger } from '../utils/logger.js';
 import { checkCooldown } from '../utils/cooldown.js';
+import { getMissingPermissions } from '../utils/permissionGuard.js';
 import { isAllowedCommandChannel, getCommandChannelIds } from '../utils/guildConfig.js';
 import { getGuildSuspensionStatus } from '../utils/guildSuspension.js';
 import { sendLog } from '../utils/channelLogger.js';
@@ -57,6 +58,18 @@ const event: BotEvent = {
                 });
                 return;
             }
+        }
+
+        const missingPermissions = getMissingPermissions(interaction, command);
+        if (missingPermissions) {
+            await interaction.reply({
+                embeds: [Embeds.error(
+                    `You need the following permission(s) to use \`/${interaction.commandName}\`:\n${missingPermissions.map(p => `• **${p}**`).join('\n')}`,
+                    'Insufficient Permissions',
+                )],
+                ephemeral: true,
+            });
+            return;
         }
 
         const remainingCooldown = checkCooldown(interaction.commandName, interaction.user.id);

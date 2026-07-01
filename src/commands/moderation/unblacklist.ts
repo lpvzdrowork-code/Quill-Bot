@@ -45,7 +45,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -63,7 +63,7 @@ const command: BotCommand = {
         });
 
         if (!activeRecord && !hasBlacklistRole) {
-            await interaction.editReply(`❌ **${target!.user.username}** is not currently blacklisted.`);
+            await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is not currently blacklisted.`)] });
             return;
         }
 
@@ -89,7 +89,7 @@ const command: BotCommand = {
                 });
             }
 
-            await interaction.editReply(`✅ Blacklist removed from **${target!.user.username}**.`);
+            await interaction.editReply({ embeds: [Embeds.success(`Blacklist removed from **${target!.user.username}**.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Unblacklist',
@@ -101,7 +101,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Unblacklist command failed:', err);
-            await interaction.editReply('❌ Failed to remove the blacklist. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to remove the blacklist. The action was not completed.')] });
         }
     },
 };

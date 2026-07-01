@@ -10,6 +10,7 @@ import {
 import type { TextChannel, Embed } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { EMBED_COLOR_CHOICES } from '../../utils/embedColors.js';
+import { Embeds } from '../../utils/embeds.js';
 import { createLogger } from '../../utils/logger.js';
 
 const log = createLogger('Embed');
@@ -73,7 +74,7 @@ const command: BotCommand = {
             const channel = (interaction.options.getChannel('channel') as TextChannel | null) ?? interaction.channel as TextChannel;
 
             if (!channel || !channel.isTextBased()) {
-                await interaction.reply({ content: '❌ Pick a text channel to post in.', ephemeral: true });
+                await interaction.reply({ embeds: [Embeds.error('Pick a text channel to post in.')], ephemeral: true });
                 return;
             }
 
@@ -125,7 +126,7 @@ const command: BotCommand = {
 
             const resolved = resolveMessageRef(messageInput, interaction.channelId);
             if (!resolved) {
-                await interaction.reply({ content: "❌ That doesn't look like a valid message link or ID.", ephemeral: true });
+                await interaction.reply({ embeds: [Embeds.error("That doesn't look like a valid message link or ID.")], ephemeral: true });
                 return;
             }
 
@@ -139,20 +140,20 @@ const command: BotCommand = {
             try {
                 const targetChannel = await interaction.guild!.channels.fetch(resolved.channelId);
                 if (!targetChannel || !targetChannel.isTextBased()) {
-                    await interaction.reply({ content: "❌ Couldn't find that channel.", ephemeral: true });
+                    await interaction.reply({ embeds: [Embeds.error("Couldn't find that channel.")], ephemeral: true });
                     return;
                 }
 
                 const message = await (targetChannel as TextChannel).messages.fetch(resolved.messageId);
 
                 if (message.author.id !== interaction.client.user!.id) {
-                    await interaction.reply({ content: "❌ That message wasn't posted by Quill, so it can't be edited here.", ephemeral: true });
+                    await interaction.reply({ embeds: [Embeds.error("That message wasn't posted by Quill, so it can't be edited here.")], ephemeral: true });
                     return;
                 }
 
                 const embed = message.embeds[0];
                 if (!embed) {
-                    await interaction.reply({ content: "❌ That message doesn't contain an embed.", ephemeral: true });
+                    await interaction.reply({ embeds: [Embeds.error("That message doesn't contain an embed.")], ephemeral: true });
                     return;
                 }
 
@@ -160,7 +161,7 @@ const command: BotCommand = {
 
             } catch (err) {
                 log.error('Embed edit lookup failed:', err);
-                await interaction.reply({ content: "❌ Couldn't find or read that message. Check the link/ID and try again.", ephemeral: true });
+                await interaction.reply({ embeds: [Embeds.error("Couldn't find or read that message. Check the link/ID and try again.")], ephemeral: true });
                 return;
             }
 

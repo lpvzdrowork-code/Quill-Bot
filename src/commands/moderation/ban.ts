@@ -46,7 +46,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -72,7 +72,7 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been banned.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been banned.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Ban',
@@ -87,7 +87,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Ban command failed:', err);
-            await interaction.editReply('❌ Failed to ban that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to ban that member. The action was not completed.')] });
         }
     },
 };

@@ -42,7 +42,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -75,7 +75,7 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been softbanned. Their last 7 days of messages have been deleted.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been softbanned. Their last 7 days of messages have been deleted.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Softban',
@@ -88,7 +88,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Softban command failed:', err);
-            await interaction.editReply('❌ Failed to softban that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to softban that member. The action was not completed.')] });
         }
     },
 };

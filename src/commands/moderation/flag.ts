@@ -43,7 +43,7 @@ const command: BotCommand = {
             });
 
             if (guardError) {
-                await interaction.editReply(guardError);
+                await interaction.editReply({ embeds: [Embeds.error(guardError)] });
                 return;
             }
 
@@ -58,7 +58,7 @@ const command: BotCommand = {
             });
 
             if (existing) {
-                await interaction.editReply(`❌ **${target!.user.username}** is already flagged.`);
+                await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is already flagged.`)] });
                 return;
             }
 
@@ -86,7 +86,7 @@ const command: BotCommand = {
                 log.warn('No FLAG_ROLE set in .env — flag role was not assigned.');
             }
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been flagged for staff watch.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been flagged for staff watch.`)] });
 
             // ── Step 3: Log to staff log ──────────────────────────────────────
 
@@ -107,12 +107,12 @@ const command: BotCommand = {
             // (target is scoped inside the try block above, so we use a generic
             // wording here rather than referencing it.)
             if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-                await interaction.editReply('❌ That member is already flagged.');
+                await interaction.editReply({ embeds: [Embeds.error('That member is already flagged.')] });
                 return;
             }
 
             log.error('Flag command failed:', err);
-            await interaction.editReply('❌ Failed to flag that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to flag that member. The action was not completed.')] });
         }
     },
 };

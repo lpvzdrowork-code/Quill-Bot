@@ -30,7 +30,7 @@ const command: BotCommand = {
         const reason = interaction.options.getString('reason') ?? 'No reason provided.';
 
         if (!/^\d{17,20}$/.test(userId)) {
-            await interaction.editReply('❌ That doesn\'t look like a valid Discord user ID.');
+            await interaction.editReply({ embeds: [Embeds.error("That doesn't look like a valid Discord user ID.")] });
             return;
         }
 
@@ -38,7 +38,7 @@ const command: BotCommand = {
         try {
             bannedUser = await interaction.guild!.bans.fetch(userId);
         } catch {
-            await interaction.editReply('❌ That user is not banned or could not be found.');
+            await interaction.editReply({ embeds: [Embeds.error('That user is not banned or could not be found.')] });
             return;
         }
 
@@ -52,7 +52,7 @@ const command: BotCommand = {
                 data:  { endedAt: new Date() },
             });
 
-            await interaction.editReply(`✅ **${bannedUser.user.username}** has been unbanned.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${bannedUser.user.username}** has been unbanned.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Unban',
@@ -64,7 +64,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Unban command failed:', err);
-            await interaction.editReply('❌ Failed to unban that user. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to unban that user. The action was not completed.')] });
         }
     },
 };

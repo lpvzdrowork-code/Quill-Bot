@@ -46,7 +46,7 @@ const command: BotCommand = {
             });
 
             if (guardError) {
-                await interaction.editReply(guardError);
+                await interaction.editReply({ embeds: [Embeds.error(guardError)] });
                 return;
             }
 
@@ -64,7 +64,7 @@ const command: BotCommand = {
             });
 
             if (!activeRecord && !hasFlagRole) {
-                await interaction.editReply(`❌ **${target!.user.username}** is not currently flagged.`);
+                await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is not currently flagged.`)] });
                 return;
             }
 
@@ -87,7 +87,7 @@ const command: BotCommand = {
                 });
             }
 
-            await interaction.editReply(`✅ Flag removed from **${target!.user.username}**.`);
+            await interaction.editReply({ embeds: [Embeds.success(`Flag removed from **${target!.user.username}**.`)] });
 
             // ── Log to staff log ──────────────────────────────────────────────
 
@@ -101,7 +101,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Unflag command failed:', err);
-            await interaction.editReply('❌ Failed to remove the flag. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to remove the flag. The action was not completed.')] });
         }
     },
 };

@@ -33,7 +33,7 @@ const command: BotCommand = {
         const channel = interaction.channel as TextChannel;
 
         if (!channel || !channel.isTextBased()) {
-            await interaction.editReply('❌ This command can only be used in a text channel.');
+            await interaction.editReply({ embeds: [Embeds.error('This command can only be used in a text channel.')] });
             return;
         }
 
@@ -80,7 +80,7 @@ const command: BotCommand = {
             }
 
             if (deletable.length === 0) {
-                await interaction.editReply('❌ No deletable messages found. Messages older than 14 days cannot be bulk deleted.');
+                await interaction.editReply({ embeds: [Embeds.error('No deletable messages found. Messages older than 14 days cannot be bulk deleted.')] });
                 return;
             }
 
@@ -90,7 +90,7 @@ const command: BotCommand = {
                 ? `Deleted **${deleted.size}** message(s) from ${target.username} in ${channel}.`
                 : `Deleted **${deleted.size}** message(s) in ${channel}.`;
 
-            await interaction.editReply(`✅ ${description}`);
+            await interaction.editReply({ embeds: [Embeds.success(description)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Purge',
@@ -102,7 +102,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Purge command failed:', err);
-            await interaction.editReply('❌ Failed to delete messages. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to delete messages. The action was not completed.')] });
         }
     },
 };

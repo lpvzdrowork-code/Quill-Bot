@@ -44,7 +44,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -59,7 +59,7 @@ const command: BotCommand = {
         });
 
         if (existing) {
-            await interaction.editReply(`❌ **${target!.user.username}** is already blacklisted.`);
+            await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is already blacklisted.`)] });
             return;
         }
 
@@ -82,7 +82,7 @@ const command: BotCommand = {
 
             const blacklistRoleId = config.guild.roles.blacklist;
             if (!blacklistRoleId) {
-                await interaction.editReply('❌ No `BLACKLIST_ROLE` is set in `.env`. Please configure it before using this command.');
+                await interaction.editReply({ embeds: [Embeds.error('No `BLACKLIST_ROLE` is set in `.env`. Please configure it before using this command.')] });
                 return;
             }
 
@@ -99,7 +99,7 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been blacklisted.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been blacklisted.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Blacklist',
@@ -115,12 +115,12 @@ const command: BotCommand = {
             // and P2002 here means we lost that race. Treat it the same as the
             // "already blacklisted" case rather than a generic failure.
             if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-                await interaction.editReply(`❌ **${target!.user.username}** is already blacklisted.`);
+                await interaction.editReply({ embeds: [Embeds.error(`**${target!.user.username}** is already blacklisted.`)] });
                 return;
             }
 
             log.error('Blacklist command failed:', err);
-            await interaction.editReply('❌ Failed to blacklist that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to blacklist that member. The action was not completed.')] });
         }
     },
 };

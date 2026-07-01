@@ -33,7 +33,7 @@ const command: BotCommand = {
         const channel = interaction.channel as TextChannel;
 
         if (!channel || !channel.isTextBased() || !('setRateLimitPerUser' in channel)) {
-            await interaction.editReply('❌ This command can only be used in a text channel.');
+            await interaction.editReply({ embeds: [Embeds.error('This command can only be used in a text channel.')] });
             return;
         }
 
@@ -44,7 +44,7 @@ const command: BotCommand = {
                 ? `Slowmode disabled in ${channel}.`
                 : `Slowmode set to **${seconds}s** in ${channel}.`;
 
-            await interaction.editReply(`✅ ${status}`);
+            await interaction.editReply({ embeds: [Embeds.success(status)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Slowmode',
@@ -59,7 +59,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Slowmode command failed:', err);
-            await interaction.editReply('❌ Failed to set slowmode. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to set slowmode. The action was not completed.')] });
         }
     },
 };

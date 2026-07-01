@@ -43,7 +43,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -54,13 +54,13 @@ const command: BotCommand = {
                 const warn = await prisma.warn.findUnique({ where: { id: warnId } });
 
                 if (!warn || warn.guildId !== interaction.guildId || warn.userId !== target!.id) {
-                    await interaction.editReply('❌ That warning ID was not found for this user.');
+                    await interaction.editReply({ embeds: [Embeds.error('That warning ID was not found for this user.')] });
                     return;
                 }
 
                 await prisma.warn.delete({ where: { id: warnId } });
 
-                await interaction.editReply(`✅ Warning \`${warnId}\` has been removed from **${target!.user.username}**.`);
+                await interaction.editReply({ embeds: [Embeds.success(`Warning \`${warnId}\` has been removed from **${target!.user.username}**.`)] });
 
                 await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                     action:    'Warn Removed',
@@ -72,7 +72,7 @@ const command: BotCommand = {
 
             } catch (err) {
                 log.error('ClearWarns (single) command failed:', err);
-                await interaction.editReply('❌ Failed to remove that warning. The action was not completed.');
+                await interaction.editReply({ embeds: [Embeds.error('Failed to remove that warning. The action was not completed.')] });
             }
 
             return;
@@ -86,11 +86,11 @@ const command: BotCommand = {
             });
 
             if (count === 0) {
-                await interaction.editReply(`✅ **${target!.user.username}** has no warnings to clear.`);
+                await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has no warnings to clear.`)] });
                 return;
             }
 
-            await interaction.editReply(`✅ Cleared **${count}** warning(s) from **${target!.user.username}**.`);
+            await interaction.editReply({ embeds: [Embeds.success(`Cleared **${count}** warning(s) from **${target!.user.username}**.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Warns Cleared',
@@ -102,7 +102,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('ClearWarns (all) command failed:', err);
-            await interaction.editReply('❌ Failed to clear warnings. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to clear warnings. The action was not completed.')] });
         }
     },
 };

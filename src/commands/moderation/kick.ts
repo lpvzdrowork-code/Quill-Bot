@@ -38,7 +38,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -63,7 +63,7 @@ const command: BotCommand = {
                 },
             });
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been kicked.`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been kicked.`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Kick',
@@ -75,7 +75,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Kick command failed:', err);
-            await interaction.editReply('❌ Failed to kick that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to kick that member. The action was not completed.')] });
         }
     },
 };

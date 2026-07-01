@@ -14,8 +14,9 @@ import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
 //   5. Target is not the server owner / an administrator (opt-in)
 //   6. Target's highest role is strictly below the invoker's highest role
 //
-// Returns a user-facing error string (already prefixed with ❌) on the first
-// failed check, or `null` if the target is valid and the command may proceed.
+// Returns a plain user-facing error string (no emoji prefix — wrap it in
+// Embeds.error() at the call site) on the first failed check, or `null` if
+// the target is valid and the command may proceed.
 //
 // Usage:
 //   const target = interaction.options.getMember('target') as GuildMember | null;
@@ -26,7 +27,7 @@ import type { ChatInputCommandInteraction, GuildMember } from 'discord.js';
 //       capability: 'bannable',
 //   });
 //   if (error) {
-//       await interaction.editReply(error);
+//       await interaction.editReply({ embeds: [Embeds.error(error)] });
 //       return;
 //   }
 //   // target is guaranteed non-null past this point — use target! safely.
@@ -70,34 +71,34 @@ export function validateModerationTarget(options: ModerationGuardOptions): strin
     } = options;
 
     if (!target) {
-        return '❌ That user could not be found in this server.';
+        return 'That user could not be found in this server.';
     }
 
     if (capability && !target[capability]) {
-        return `❌ I cannot ${capabilityLabel} that member. They may have a higher role than me.`;
+        return `I cannot ${capabilityLabel} that member. They may have a higher role than me.`;
     }
 
     if (target.id === interaction.user.id) {
-        return `❌ You cannot ${actionLabel} yourself.`;
+        return `You cannot ${actionLabel} yourself.`;
     }
 
     if (target.user.bot) {
-        return `❌ You cannot ${actionLabel} a bot.`;
+        return `You cannot ${actionLabel} a bot.`;
     }
 
     if (protectOwnerAndAdmins) {
         if (target.id === interaction.guild?.ownerId) {
-            return `❌ You cannot ${actionLabel} the server owner.`;
+            return `You cannot ${actionLabel} the server owner.`;
         }
 
         if (target.permissions.has(PermissionFlagsBits.Administrator)) {
-            return `❌ You cannot ${actionLabel} an administrator.`;
+            return `You cannot ${actionLabel} an administrator.`;
         }
     }
 
     const invoker = interaction.member as GuildMember;
     if (target.roles.highest.position >= invoker.roles.highest.position) {
-        return `❌ You cannot ${actionLabel} a member with an equal or higher role than your own.`;
+        return `You cannot ${actionLabel} a member with an equal or higher role than your own.`;
     }
 
     return null;

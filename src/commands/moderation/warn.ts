@@ -37,7 +37,7 @@ const command: BotCommand = {
         });
 
         if (guardError) {
-            await interaction.editReply(guardError);
+            await interaction.editReply({ embeds: [Embeds.error(guardError)] });
             return;
         }
 
@@ -65,7 +65,7 @@ const command: BotCommand = {
                 })] });
             } catch { /* DMs closed */ }
 
-            await interaction.editReply(`✅ **${target!.user.username}** has been warned. They now have **${warnCount}** warning(s).`);
+            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been warned. They now have **${warnCount}** warning(s).`)] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Warn',
@@ -81,7 +81,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Warn command failed:', err);
-            await interaction.editReply('❌ Failed to warn that member. The action was not completed.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to warn that member. The action was not completed.')] });
         }
     },
 };

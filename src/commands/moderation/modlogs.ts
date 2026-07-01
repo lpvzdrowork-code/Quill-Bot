@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, EmbedBuilder } f
 import type { BotCommand } from '../../types/index.js';
 import { prisma } from '../../lib/prisma.js';
 import { paginate } from '../../utils/paginator.js';
+import { Embeds } from '../../utils/embeds.js';
 import { createLogger } from '../../utils/logger.js';
 import { config } from '../../config.js';
 
@@ -26,7 +27,7 @@ const command: BotCommand = {
         const target = interaction.options.getMember('target') as GuildMember | null;
 
         if (!target) {
-            await interaction.editReply('❌ That user could not be found in this server.');
+            await interaction.editReply({ embeds: [Embeds.error('That user could not be found in this server.')] });
             return;
         }
 
@@ -65,7 +66,7 @@ const command: BotCommand = {
                         + blacklists.length + flags.length;
 
             if (total === 0) {
-                await interaction.editReply(`✅ **${target.user.username}** has no moderation history.`);
+                await interaction.editReply({ embeds: [Embeds.success(`**${target.user.username}** has no moderation history.`)] });
                 return;
             }
 
@@ -167,7 +168,7 @@ const command: BotCommand = {
 
         } catch (err) {
             log.error('Modlogs command failed:', err);
-            await interaction.editReply('❌ Failed to retrieve moderation logs. Please try again.');
+            await interaction.editReply({ embeds: [Embeds.error('Failed to retrieve moderation logs. Please try again.')] });
         }
     },
 };

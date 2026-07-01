@@ -2,6 +2,7 @@ import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } f
 import type { ChatInputCommandInteraction, TextChannel } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { config } from '../../config.js';
+import { Embeds } from '../../utils/embeds.js';
 import { createLogger } from '../../utils/logger.js';
 import {
     LOG_CATEGORIES,
@@ -121,7 +122,7 @@ const command: BotCommand = {
                 await handleToggle(interaction);
                 break;
             default:
-                await interaction.reply({ content: '❌ Unknown subcommand.', ephemeral: true });
+                await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], ephemeral: true });
         }
     },
 };
@@ -139,19 +140,19 @@ async function handleLogging(interaction: ChatInputCommandInteraction): Promise<
     const channel        = interaction.options.getChannel('channel', true) as TextChannel;
 
     if (!isLogCategory(categoryInput)) {
-        await interaction.editReply(`❌ \`${categoryInput}\` is not a valid log category.`);
+        await interaction.editReply({ embeds: [Embeds.error(`\`${categoryInput}\` is not a valid log category.`)] });
         return;
     }
 
     try {
         await setLogChannel(interaction.guildId!, categoryInput, channel.id);
 
-        await interaction.editReply(`✅ **${categoryInput}** will now be logged to ${channel}.`);
+        await interaction.editReply({ embeds: [Embeds.success(`**${categoryInput}** will now be logged to ${channel}.`)] });
         log.info(`${interaction.user.tag} mapped "${categoryInput}" -> #${channel.name} in guild ${interaction.guildId}.`);
 
     } catch (err) {
         log.error('Failed to set log channel:', err);
-        await interaction.editReply('❌ Failed to save that setting. The action was not completed.');
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
     }
 }
 
@@ -170,26 +171,26 @@ async function handleCommandChannel(interaction: ChatInputCommandInteraction): P
         if (action === 'add') {
             const added = await addCommandChannel(interaction.guildId!, channel.id);
 
-            await interaction.editReply(
+            await interaction.editReply({ embeds: [
                 added
-                    ? `✅ ${channel} is now an allowed command channel.\n-# Once at least one channel is designated, Quill's commands are restricted to those channels.`
-                    : `ℹ️ ${channel} is already an allowed command channel.`
-            );
+                    ? Embeds.success(`${channel} is now an allowed command channel.\n-# Once at least one channel is designated, Quill's commands are restricted to those channels.`)
+                    : Embeds.info(`${channel} is already an allowed command channel.`)
+            ]});
         } else {
             const removed = await removeCommandChannel(interaction.guildId!, channel.id);
 
-            await interaction.editReply(
+            await interaction.editReply({ embeds: [
                 removed
-                    ? `✅ ${channel} has been removed from the command-channel allowlist.`
-                    : `ℹ️ ${channel} wasn't on the allowlist.`
-            );
+                    ? Embeds.success(`${channel} has been removed from the command-channel allowlist.`)
+                    : Embeds.info(`${channel} wasn't on the allowlist.`)
+            ]});
         }
 
         log.info(`${interaction.user.tag} ${action === 'add' ? 'added' : 'removed'} #${channel.name} ${action === 'add' ? 'to' : 'from'} the command allowlist in guild ${interaction.guildId}.`);
 
     } catch (err) {
         log.error('Failed to update command channel allowlist:', err);
-        await interaction.editReply('❌ Failed to save that setting. The action was not completed.');
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
     }
 }
 
@@ -205,7 +206,7 @@ async function handleToggle(interaction: ChatInputCommandInteraction): Promise<v
     const enabled        = interaction.options.getBoolean('enabled', true);
 
     if (!isLogCategory(categoryInput)) {
-        await interaction.editReply(`❌ \`${categoryInput}\` is not a valid log category.`);
+        await interaction.editReply({ embeds: [Embeds.error(`\`${categoryInput}\` is not a valid log category.`)] });
         return;
     }
 
@@ -213,16 +214,16 @@ async function handleToggle(interaction: ChatInputCommandInteraction): Promise<v
         const updated = await setLogCategoryEnabled(interaction.guildId!, categoryInput, enabled);
 
         if (!updated) {
-            await interaction.editReply(`❌ **${categoryInput}** has no channel configured yet. Run \`/setup logging\` first.`);
+            await interaction.editReply({ embeds: [Embeds.error(`**${categoryInput}** has no channel configured yet. Run \`/setup logging\` first.`)] });
             return;
         }
 
-        await interaction.editReply(`✅ **${categoryInput}** is now ${enabled ? '🟢 enabled' : '🔴 disabled'}.`);
+        await interaction.editReply({ embeds: [Embeds.success(`**${categoryInput}** is now ${enabled ? '🟢 enabled' : '🔴 disabled'}.`)] });
         log.info(`${interaction.user.tag} set "${categoryInput}" enabled=${enabled} in guild ${interaction.guildId}.`);
 
     } catch (err) {
         log.error('Failed to toggle log category:', err);
-        await interaction.editReply('❌ Failed to save that setting. The action was not completed.');
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
     }
 }
 
@@ -267,7 +268,7 @@ async function handleConfigView(interaction: ChatInputCommandInteraction): Promi
 
     } catch (err) {
         log.error('Failed to load config view:', err);
-        await interaction.editReply('❌ Failed to load the current configuration. Please try again.');
+        await interaction.editReply({ embeds: [Embeds.error('Failed to load the current configuration. Please try again.')] });
     }
 }
 
