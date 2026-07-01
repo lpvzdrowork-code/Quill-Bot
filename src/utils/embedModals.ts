@@ -38,7 +38,7 @@ async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]
     try {
         const channel = await interaction.guild!.channels.fetch(channelId);
         if (!channel || !channel.isTextBased()) {
-            await interaction.editReply('❌ That channel is no longer available.');
+            await interaction.editReply({ embeds: [Embeds.error('That channel is no longer available.')] });
             return;
         }
 
@@ -51,13 +51,13 @@ async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]
         });
 
         await (channel as TextChannel).send({ embeds: [embed] });
-        await interaction.editReply(`✅ Posted to <#${channelId}>.`);
+        await interaction.editReply({ embeds: [Embeds.success(`Posted to <#${channelId}>.`)] });
         log.info(`${interaction.user.tag} posted a new embed to #${channelId}.`);
 
     } catch (err) {
         log.error('Failed to post embed:', err);
         const detail = err instanceof Error ? err.message : String(err);
-        await interaction.editReply(`❌ Failed to post that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``);
+        await interaction.editReply({ embeds: [Embeds.error(`Failed to post that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``)] });
     }
 }
 
@@ -74,7 +74,7 @@ async function handleEdit(interaction: ModalSubmitInteraction, parts: string[]):
     try {
         const channel = await interaction.guild!.channels.fetch(channelId);
         if (!channel || !channel.isTextBased()) {
-            await interaction.editReply('❌ That channel is no longer available.');
+            await interaction.editReply({ embeds: [Embeds.error('That channel is no longer available.')] });
             return;
         }
 
@@ -98,12 +98,12 @@ async function handleEdit(interaction: ModalSubmitInteraction, parts: string[]):
         });
 
         await message.edit({ embeds: [embed] });
-        await interaction.editReply('✅ Embed updated.');
+        await interaction.editReply({ embeds: [Embeds.success('Embed updated.')] });
         log.info(`${interaction.user.tag} edited embed ${messageId} in #${channelId}.`);
 
     } catch (err) {
         log.error('Failed to edit embed:', err);
         const detail = err instanceof Error ? err.message : String(err);
-        await interaction.editReply(`❌ Failed to update that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``);
+        await interaction.editReply({ embeds: [Embeds.error(`Failed to update that embed.\n\`\`\`${detail.slice(0, 300)}\`\`\``)] });
     }
 }
