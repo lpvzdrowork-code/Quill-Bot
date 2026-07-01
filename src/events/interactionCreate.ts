@@ -8,6 +8,7 @@ import { isAllowedCommandChannel, getCommandChannelIds } from '../utils/guildCon
 import { getGuildSuspensionStatus } from '../utils/guildSuspension.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { Embeds } from '../utils/embeds.js';
+import { handleEmbedModal } from '../utils/embedModals.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -17,6 +18,20 @@ const event: BotEvent = {
     once: false,
     async execute(...args) {
         const interaction = args[0] as Interaction;
+
+        // Modal submissions (e.g. /embed's compose/edit modal) are routed
+        // separately since they aren't ChatInputCommandInteractions and don't
+        // go through BotCommand.execute at all.
+        if (interaction.isModalSubmit()) {
+            if (interaction.customId.startsWith('embed_')) {
+                try {
+                    await handleEmbedModal(interaction);
+                } catch (err) {
+                    log.error('Embed modal handler failed:', err);
+                }
+            }
+            return;
+        }
 
         if (!interaction.isChatInputCommand()) return;
 

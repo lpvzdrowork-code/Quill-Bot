@@ -203,6 +203,33 @@ export const Embeds = {
             .setThumbnail(user.displayAvatarURL({ size: 128 }))
             .addFields({ name: '🆔 User', value: `${user.username} (\`${user.id}\`)`, inline: true });
     },
+
+    // ─── Custom / Announcement Embed ──────────────────────────────────────────
+    // Backs /embed. Deliberately spare compared to modAction() above — no
+    // emoji-prefixed title, no case ID, no auto footer. A staff member's own
+    // title/description/footer are the only text that ever appears. Nothing
+    // here identifies Quill as the sender unless the author explicitly types
+    // a footer saying so.
+
+    custom(options: {
+        color:       ColorResolvable;
+        title?:      string;
+        description: string;
+        footer?:     string;
+        imageUrl?:   string;
+    }): EmbedBuilder {
+        const { color, title, description, footer, imageUrl } = options;
+
+        const embed = new EmbedBuilder()
+            .setColor(color)
+            .setDescription(description);
+
+        if (title)    embed.setTitle(title);
+        if (footer)   embed.setFooter({ text: footer });
+        if (imageUrl) embed.setImage(imageUrl);
+
+        return embed;
+    },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

@@ -13,6 +13,7 @@ const CATEGORY_LABELS: Record<string, string> = {
     moderation: '🛡️ Moderation',
     config:     '⚙️ Configuration',
     info:       'ℹ️ Info',
+    tools:      '🛠️ Tools',
     testing:    '🧪 Testing',
     general:    '📦 General',
 };
