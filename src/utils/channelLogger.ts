@@ -20,7 +20,7 @@ const log = createLogger('ChannelLogger');
 //   await sendLog(interaction.guildId!, 'staff-logs',  Embeds.modAction({ ... }));
 //   await sendLog(member.guild.id,      'member-logs', Embeds.memberJoin(user));
 
-// Legacy env-based fallback, kept only for guilds that haven't run /setup yet.
+// Legacy env-based fallback, kept only for guilds that haven't run /setup yet..
 const LEGACY_FALLBACK: Record<LogCategory, string> = {
     'staff-logs':   config.guild.channels.staffLog,
     'member-logs':  config.guild.channels.memberLog,
