@@ -3,7 +3,6 @@ import { client } from './client.js';
 import { logger } from './utils/logger.js';
 import { loadEvents } from './utils/eventLoader.js';
 import { loadCommands, deployCommands } from './utils/commandLoader.js';
-import { setBotStatus } from './utils/botStatus.js';
 
 // ─── Env Validation ───────────────────────────────────────────────────────────
 
@@ -30,7 +29,6 @@ const env = validateEnv();
 
 async function shutdown(signal: string): Promise<void> {
     logger.warn(`Received ${signal}. Shutting down Quill gracefully...`);
-    await setBotStatus('offline');
     client.destroy();
     logger.info('Quill has disconnected. Goodbye.');
     process.exit(0);
