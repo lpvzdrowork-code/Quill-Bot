@@ -26,9 +26,17 @@ export function isLogCategory(value: string): value is LogCategory {
     return (LOG_CATEGORIES as readonly string[]).includes(value);
 }
 
+export const ROLE_TYPES = ['timeout', 'blacklist', 'flag'] as const;
+export type RoleType = typeof ROLE_TYPES[number];
+
+export function isRoleType(value: string): value is RoleType {
+    return (ROLE_TYPES as readonly string[]).includes(value);
+}
+
 interface CachedGuildConfig {
     logChannels: Map<string, { channelId: string; enabled: boolean }>;
     commandChannelIds: Set<string>;
+    roles: Map<string, string>;
     fetchedAt: number;
 }
 
@@ -36,14 +44,16 @@ const CACHE_TTL_MS = 60_000;
 const cache = new Map<string, CachedGuildConfig>();
 
 async function loadGuildConfig(guildId: string): Promise<CachedGuildConfig> {
-    const [logChannels, commandChannels] = await Promise.all([
+    const [logChannels, commandChannels, guildRoles] = await Promise.all([
         prisma.logChannel.findMany({ where: { guildId } }),
         prisma.commandChannel.findMany({ where: { guildId } }),
+        prisma.guildRole.findMany({ where: { guildId } }),
     ]);
 
     const fresh: CachedGuildConfig = {
         logChannels: new Map(logChannels.map(lc => [lc.category, { channelId: lc.channelId, enabled: lc.enabled }])),
         commandChannelIds: new Set(commandChannels.map(cc => cc.channelId)),
+        roles: new Map(guildRoles.map(r => [r.roleType, r.roleId])),
         fetchedAt: Date.now(),
     };
 
@@ -64,7 +74,7 @@ async function getGuildConfig(guildId: string): Promise<CachedGuildConfig> {
         // Fail open: an empty config means "no log routing, no command
         // restriction" rather than the bot going silent or locking everyone
         // out because of a transient DB hiccup.
-        return { logChannels: new Map(), commandChannelIds: new Set(), fetchedAt: 0 };
+        return { logChannels: new Map(), commandChannelIds: new Set(), roles: new Map(), fetchedAt: 0 };
     }
 }
 
@@ -149,6 +159,42 @@ export async function addCommandChannel(guildId: string, channelId: string): Pro
 
 export async function removeCommandChannel(guildId: string, channelId: string): Promise<boolean> {
     const { count } = await prisma.commandChannel.deleteMany({ where: { guildId, channelId } });
+    if (count > 0) invalidateGuildConfig(guildId);
+    return count > 0;
+}
+
+// ─── Guild Roles ───────────────────────────────────────────────────────────────────
+// Per-guild role IDs (timeout/blacklist/flag), configured via /setup role.
+// Replaces the old shared TIMEOUT_ROLE/BLACKLIST_ROLE/FLAG_ROLE env vars,
+// which pointed at role IDs from a single guild and silently broke or
+// hard-failed those commands in any other server Quill joined.
+
+export async function getRoleId(guildId: string, roleType: RoleType): Promise<string | null> {
+    const cfg = await getGuildConfig(guildId);
+    return cfg.roles.get(roleType) ?? null;
+}
+
+/** Full snapshot of every role slot's mapping, for /setup config view. */
+export async function getAllRoles(guildId: string): Promise<Record<RoleType, string | null>> {
+    const cfg = await getGuildConfig(guildId);
+    const result = {} as Record<RoleType, string | null>;
+    for (const roleType of ROLE_TYPES) {
+        result[roleType] = cfg.roles.get(roleType) ?? null;
+    }
+    return result;
+}
+
+export async function setRole(guildId: string, roleType: RoleType, roleId: string): Promise<void> {
+    await prisma.guildRole.upsert({
+        where:  { guildId_roleType: { guildId, roleType } },
+        create: { guildId, roleType, roleId },
+        update: { roleId },
+    });
+    invalidateGuildConfig(guildId);
+}
+
+export async function removeRole(guildId: string, roleType: RoleType): Promise<boolean> {
+    const { count } = await prisma.guildRole.deleteMany({ where: { guildId, roleType } });
     if (count > 0) invalidateGuildConfig(guildId);
     return count > 0;
 }

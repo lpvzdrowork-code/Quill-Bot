@@ -4,9 +4,9 @@ import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Blacklist');
 
@@ -80,9 +80,9 @@ const command: BotCommand = {
 
             // ── Step A: Assign the blacklist role ─────────────────────────────
 
-            const blacklistRoleId = config.guild.roles.blacklist;
+            const blacklistRoleId = await getRoleId(interaction.guildId!, 'blacklist');
             if (!blacklistRoleId) {
-                await interaction.editReply({ embeds: [Embeds.error('No `BLACKLIST_ROLE` is set in `.env`. Please configure it before using this command.')] });
+                await interaction.editReply({ embeds: [Embeds.error('No blacklist role is configured for this server. An admin needs to run `/setup role type:blacklist role:<role>` first.')] });
                 return;
             }
 

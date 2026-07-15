@@ -3,9 +3,9 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Timeout');
 
@@ -81,7 +81,7 @@ const command: BotCommand = {
 
             await target!.timeout(durationSecs * 1000, reason);
 
-            const timeoutRoleId = config.guild.roles.timeout;
+            const timeoutRoleId = await getRoleId(interaction.guildId!, 'timeout');
             if (timeoutRoleId) {
                 try {
                     await target!.roles.add(timeoutRoleId, 'Timeout role assigned by Quill');

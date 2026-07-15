@@ -94,7 +94,6 @@ export async function loadCommands(): Promise<void> {
 export async function deployCommands(): Promise<void> {
     const token    = process.env.DISCORD_TOKEN;
     const clientId = process.env.CLIENT_ID;
-    const guildId  = process.env.GUILD_ID;
 
     if (!token || !clientId) {
         log.error('Missing DISCORD_TOKEN or CLIENT_ID in .env. Cannot deploy commands.');
@@ -111,13 +110,8 @@ export async function deployCommands(): Promise<void> {
     const rest = new REST().setToken(token);
 
     try {
-        if (guildId) {
-            await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-            log.info(`Deployed ${commands.length} command(s) to guild ${guildId}.`);
-        } else {
-            await rest.put(Routes.applicationCommands(clientId), { body: commands });
-            log.info(`Deployed ${commands.length} command(s) globally.`);
-        }
+        await rest.put(Routes.applicationCommands(clientId), { body: commands });
+        log.info(`Deployed ${commands.length} command(s) globally.`);
     } catch (err) {
         log.error('Failed to deploy commands:', err);
     }

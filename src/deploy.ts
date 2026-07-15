@@ -1,11 +1,13 @@
 // ─── deploy.ts ────────────────────────────────────────────────────────────────
-// Deploys all slash commands to Discord.
-// Run this manually whenever you add, remove, or change a command:
+// Deploys all slash commands to Discord — globally, so every server Quill is
+// invited to gets the commands automatically, with no per-guild setup step.
 //
 //   node --import ./register.mjs src/deploy.ts
 //
-// Guild deploy is instant. Remove GUILD_ID from .env to deploy globally
-// (global deploy takes up to 1 hour to propagate).
+// Global propagation can take up to ~1 hour to reach every guild (Discord
+// caches the command list client-side). This is a one-time wait per rollout,
+// not per-guild — once it's live it's live everywhere, including servers
+// Quill joins afterward.
 
 import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
@@ -19,7 +21,6 @@ const log = createLogger('Deploy');
 
 const token    = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
-const guildId  = process.env.GUILD_ID;
 
 if (!token || !clientId) {
     log.error('Missing DISCORD_TOKEN or CLIENT_ID in .env. Aborting.');
@@ -60,13 +61,15 @@ for (const filePath of files) {
 }
 
 // ─── Deploy ───────────────────────────────────────────────────────────────────
+// Always global — Quill is a public, multi-server bot. A guild-scoped deploy
+// path previously existed here (gated on GUILD_ID) but meant commands never
+// reached any server other than one hardcoded ID, which is exactly the bug
+// this fix addresses. If you need faster iteration while developing locally,
+// temporarily swap applicationCommands(clientId) below for
+// applicationGuildCommands(clientId, yourTestGuildId) — guild-scoped deploys
+// are instant — but never ship that swap; revert before deploying for real.
 
 const rest = new REST().setToken(token);
 
-if (guildId) {
-    await rest.put(Routes.applicationGuildCommands(clientId, guildId), { body: commands });
-    log.info(`Deployed ${commands.length} command(s) to guild ${guildId}.`);
-} else {
-    await rest.put(Routes.applicationCommands(clientId), { body: commands });
-    log.info(`Deployed ${commands.length} command(s) globally.`);
-}
+await rest.put(Routes.applicationCommands(clientId), { body: commands });
+log.info(`Deployed ${commands.length} command(s) globally. This can take up to ~1 hour to reach every server.`);

@@ -4,9 +4,9 @@ import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
 import { Prisma } from '../../generated/prisma/client.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Flag');
 
@@ -75,7 +75,7 @@ const command: BotCommand = {
 
             // ── Step 2: Assign the flag role ──────────────────────────────────
 
-            const flagRoleId = config.guild.roles.flag;
+            const flagRoleId = await getRoleId(interaction.guildId!, 'flag');
             if (flagRoleId) {
                 try {
                     await target!.roles.add(flagRoleId, `Flagged by ${interaction.user.username}: ${reason}`);
@@ -83,7 +83,7 @@ const command: BotCommand = {
                     log.warn(`Failed to assign flag role (${flagRoleId}) to ${target!.user.username}:`, roleErr);
                 }
             } else {
-                log.warn('No FLAG_ROLE set in .env — flag role was not assigned.');
+                log.warn('No flag role configured for this guild — flag role was not assigned. Run /setup role type:flag role:<role>.');
             }
 
             await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been flagged for staff watch.`)] });

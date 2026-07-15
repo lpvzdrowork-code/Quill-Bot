@@ -3,7 +3,7 @@ import type { GuildMember } from 'discord.js';
 import { Embeds } from '../utils/embeds.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { prisma } from '../lib/prisma.js';
-import { config } from '../config.js';
+import { getRoleId } from '../utils/guildConfig.js';
 import { createLogger } from '../utils/logger.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
@@ -23,7 +23,7 @@ const event: BotEvent = {
         // If this user has an active blacklist record, re-apply the role
         // immediately so they can't bypass it by leaving and rejoining.
 
-        const blacklistRoleId = config.guild.roles.blacklist;
+        const blacklistRoleId = await getRoleId(member.guild.id, 'blacklist');
         if (!blacklistRoleId) return;
 
         try {

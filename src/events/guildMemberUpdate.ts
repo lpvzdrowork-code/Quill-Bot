@@ -1,7 +1,7 @@
 import { Events } from 'discord.js';
 import type { GuildMember } from 'discord.js';
-import { config } from '../config.js';
 import { prisma } from '../lib/prisma.js';
+import { getRoleId } from '../utils/guildConfig.js';
 import { createLogger } from '../utils/logger.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
@@ -26,7 +26,7 @@ const event: BotEvent = {
 
         // ── Remove timeout role ───────────────────────────────────────────────
 
-        const timeoutRoleId = config.guild.roles.timeout;
+        const timeoutRoleId = await getRoleId(newMember.guild.id, 'timeout');
         if (timeoutRoleId && newMember.roles.cache.has(timeoutRoleId)) {
             try {
                 await newMember.roles.remove(timeoutRoleId, 'Timeout expired — role removed by Quill');
