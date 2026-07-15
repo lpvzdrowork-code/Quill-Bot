@@ -3,9 +3,9 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Unflag');
 
@@ -52,7 +52,7 @@ const command: BotCommand = {
 
             // ── Check for an active flag ──────────────────────────────────────
 
-            const flagRoleId = config.guild.roles.flag;
+            const flagRoleId = await getRoleId(interaction.guildId!, 'flag');
             const hasFlagRole = flagRoleId ? target!.roles.cache.has(flagRoleId) : false;
 
             const activeRecord = await prisma.flag.findFirst({

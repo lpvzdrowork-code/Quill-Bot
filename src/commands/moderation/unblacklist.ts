@@ -3,9 +3,9 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Unblacklist');
 
@@ -51,7 +51,7 @@ const command: BotCommand = {
 
         // ── Check for an active blacklist ─────────────────────────────────────
 
-        const blacklistRoleId = config.guild.roles.blacklist;
+        const blacklistRoleId = await getRoleId(interaction.guildId!, 'blacklist');
         const hasBlacklistRole = blacklistRoleId ? target!.roles.cache.has(blacklistRoleId) : false;
 
         const activeRecord = await prisma.blacklist.findFirst({

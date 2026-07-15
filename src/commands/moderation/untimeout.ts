@@ -3,9 +3,9 @@ import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
 import { prisma } from '../../lib/prisma.js';
-import { config } from '../../config.js';
 import { createLogger } from '../../utils/logger.js';
 import { validateModerationTarget } from '../../utils/moderationGuard.js';
+import { getRoleId } from '../../utils/guildConfig.js';
 
 const log = createLogger('Untimeout');
 
@@ -49,7 +49,7 @@ const command: BotCommand = {
             return;
         }
 
-        const timeoutRoleId  = config.guild.roles.timeout;
+        const timeoutRoleId  = await getRoleId(interaction.guildId!, 'timeout');
         const hasTimeoutRole = timeoutRoleId ? target!.roles.cache.has(timeoutRoleId) : false;
 
         if (!target!.isCommunicationDisabled() && !hasTimeoutRole) {
