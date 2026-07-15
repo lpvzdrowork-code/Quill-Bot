@@ -1,4 +1,4 @@
-import { Events } from 'discord.js';
+import { Events, PermissionFlagsBits } from 'discord.js';
 import type { Interaction } from 'discord.js';
 import type { BotCommand } from '../types/index.js';
 import { client } from '../client.js';
@@ -83,7 +83,12 @@ const event: BotEvent = {
 
         // /setup is exempt so admins configuring the allowlist can never lock
         // themselves out of fixing it from a channel that isn't on the list yet.
-        if (interaction.guildId && interaction.commandName !== 'setup') {
+        // Administrators are exempt from the restriction entirely — the allowlist
+        // is meant to keep commands out of public channels for regular members,
+        // not to fence in the people who are trusted to manage the server.
+        const isAdministrator = interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) ?? false;
+
+        if (interaction.guildId && interaction.commandName !== 'setup' && !isAdministrator) {
             const allowed = await isAllowedCommandChannel(interaction.guildId, interaction.channelId);
 
             if (!allowed) {
