@@ -194,3 +194,40 @@ model GuildRole {
   @@unique([guildId, roleType])
   @@index([guildId])
 }
+
+// ─── SecuritySettings ─────────────────────────────────────────────────────────
+// Per-guild anti-raid / anti-nuke thresholds and response actions, configured
+// via /setup security. One row per guild, created lazily on the first write —
+// a missing row means "use the defaults baked into securityConfig.ts".
+
+model SecuritySettings {
+  guildId             String   @id
+  antiRaidEnabled     Boolean  @default(true)
+  raidJoinThreshold   Int      @default(10) // joins...
+  raidWindowSeconds   Int      @default(10) // ...within this many seconds trips the raid response
+  raidAction          String   @default("lockdown") // "alert" | "lockdown" | "kick_new"
+  lockdownMinutes     Int      @default(10) // how long a triggered lockdown holds before auto-reverting
+  antiNukeEnabled     Boolean  @default(true)
+  nukeActionThreshold Int      @default(5) // destructive audit-log actions by one user...
+  nukeWindowSeconds   Int      @default(60) // ...within this many seconds trips the nuke response
+  nukeAction          String   @default("strip_roles") // "alert" | "strip_roles" | "ban"
+  trustedRoleId       String?  // members with this role are exempt from anti-nuke punishment
+  updatedAt           DateTime @updatedAt
+}
+
+// ─── SecurityIncident ─────────────────────────────────────────────────────────
+// Audit trail of every raid/nuke detection and the automatic response Quill
+// took. Kept independent of the LOG_CATEGORIES routing in LogChannel — this
+// is the historical record even for a guild that never configured staff-logs.
+
+model SecurityIncident {
+  id        String   @id @default(cuid())
+  guildId   String
+  type      String   // "raid" | "nuke"
+  actorId   String?  // responsible user, when known (nuke: the executor)
+  action    String   // response Quill took, e.g. "lockdown", "strip_roles", "alert"
+  details   String
+  createdAt DateTime @default(now())
+
+  @@index([guildId, type])
+}

@@ -18,6 +18,15 @@ import {
     getAllRoles,
     setRole,
 } from '../../utils/guildConfig.js';
+import {
+    RAID_ACTIONS,
+    isRaidAction,
+    NUKE_ACTIONS,
+    isNukeAction,
+    getSecuritySettings,
+    updateSecuritySettings,
+    type SecuritySettings,
+} from '../../utils/securityConfig.js';
 
 const log = createLogger('Setup');
 
@@ -25,6 +34,8 @@ const log = createLogger('Setup');
 // category only ever needs to be added in one place (guildConfig.ts).
 const CATEGORY_CHOICES = LOG_CATEGORIES.map(category => ({ name: category, value: category }));
 const ROLE_TYPE_CHOICES = ROLE_TYPES.map(type => ({ name: type, value: type }));
+const RAID_ACTION_CHOICES = RAID_ACTIONS.map(action => ({ name: action, value: action }));
+const NUKE_ACTION_CHOICES = NUKE_ACTIONS.map(action => ({ name: action, value: action }));
 
 const LOGGABLE_CHANNEL_TYPES = [ChannelType.GuildText, ChannelType.GuildAnnouncement] as const;
 
@@ -35,6 +46,9 @@ const LOGGABLE_CHANNEL_TYPES = [ChannelType.GuildText, ChannelType.GuildAnnounce
 //   /setup command-channel <add|remove> <channel> — manage the bot-command allowlist
 //   /setup toggle <category> <enabled>            — flip a log category on/off
 //   /setup role <type> <role>                      — map a functional role slot to a role
+//   /setup security raid [...]                    — configure/view anti-raid join-rate protection
+//   /setup security nuke [...]                    — configure/view anti-nuke destructive-action protection
+//   /setup security trusted-role <role>           — exempt a role from anti-nuke punishment
 //   /setup config view                            — ephemeral audit of current config
 //
 // Restricted to Administrators at the Discord API level via
@@ -116,6 +130,33 @@ const command: BotCommand = {
         )
 
         .addSubcommandGroup(group => group
+            .setName('security')
+            .setDescription('Configure anti-raid and anti-nuke protection.')
+            .addSubcommand(sub => sub
+                .setName('raid')
+                .setDescription('Configure anti-raid join-rate protection. Omit all options to view current settings.')
+                .addBooleanOption(option => option.setName('enabled').setDescription('Turn anti-raid protection on or off.').setRequired(false))
+                .addIntegerOption(option => option.setName('threshold').setDescription('Number of joins that trips the raid response.').setMinValue(3).setMaxValue(100).setRequired(false))
+                .addIntegerOption(option => option.setName('window_seconds').setDescription('Time window (seconds) the threshold is measured over.').setMinValue(3).setMaxValue(300).setRequired(false))
+                .addStringOption(option => option.setName('action').setDescription('Response when a raid is detected.').setRequired(false).addChoices(...RAID_ACTION_CHOICES))
+                .addIntegerOption(option => option.setName('lockdown_minutes').setDescription('How long a triggered lockdown lasts before auto-reverting.').setMinValue(1).setMaxValue(1440).setRequired(false))
+            )
+            .addSubcommand(sub => sub
+                .setName('nuke')
+                .setDescription('Configure anti-nuke destructive-action protection. Omit all options to view current settings.')
+                .addBooleanOption(option => option.setName('enabled').setDescription('Turn anti-nuke protection on or off.').setRequired(false))
+                .addIntegerOption(option => option.setName('threshold').setDescription('Number of destructive actions that trips the nuke response.').setMinValue(2).setMaxValue(50).setRequired(false))
+                .addIntegerOption(option => option.setName('window_seconds').setDescription('Time window (seconds) the threshold is measured over.').setMinValue(5).setMaxValue(600).setRequired(false))
+                .addStringOption(option => option.setName('action').setDescription('Response when a nuke pattern is detected.').setRequired(false).addChoices(...NUKE_ACTION_CHOICES))
+            )
+            .addSubcommand(sub => sub
+                .setName('trusted-role')
+                .setDescription('Exempt members with this role from anti-nuke punishment (e.g. co-owners).')
+                .addRoleOption(option => option.setName('role').setDescription('The role to exempt. Omit to clear the exemption.').setRequired(false))
+            )
+        )
+
+        .addSubcommandGroup(group => group
             .setName('config')
             .setDescription('View the current configuration.')
             .addSubcommand(sub => sub
@@ -130,6 +171,23 @@ const command: BotCommand = {
 
         if (group === 'config' && sub === 'view') {
             await handleConfigView(interaction);
+            return;
+        }
+
+        if (group === 'security') {
+            switch (sub) {
+                case 'raid':
+                    await handleSecurityRaid(interaction);
+                    break;
+                case 'nuke':
+                    await handleSecurityNuke(interaction);
+                    break;
+                case 'trusted-role':
+                    await handleSecurityTrustedRole(interaction);
+                    break;
+                default:
+                    await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], ephemeral: true });
+            }
             return;
         }
 
@@ -285,16 +343,139 @@ async function handleRole(interaction: ChatInputCommandInteraction): Promise<voi
     }
 }
 
+// ─── /setup security raid ────────────────────────────────────────────────────
+// All options are optional and only patch the fields provided — calling this
+// with no options at all is how you view the current anti-raid settings
+// without changing anything.
+
+async function handleSecurityRaid(interaction: ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply({ ephemeral: true });
+
+    const enabled         = interaction.options.getBoolean('enabled');
+    const threshold        = interaction.options.getInteger('threshold');
+    const windowSeconds    = interaction.options.getInteger('window_seconds');
+    const actionInput      = interaction.options.getString('action');
+    const lockdownMinutes  = interaction.options.getInteger('lockdown_minutes');
+
+    const patch: Partial<SecuritySettings> = {};
+    if (enabled !== null) patch.antiRaidEnabled = enabled;
+    if (threshold !== null) patch.raidJoinThreshold = threshold;
+    if (windowSeconds !== null) patch.raidWindowSeconds = windowSeconds;
+    if (lockdownMinutes !== null) patch.lockdownMinutes = lockdownMinutes;
+
+    if (actionInput !== null) {
+        if (!isRaidAction(actionInput)) {
+            await interaction.editReply({ embeds: [Embeds.error(`\`${actionInput}\` is not a valid raid action.`)] });
+            return;
+        }
+        patch.raidAction = actionInput;
+    }
+
+    if (Object.keys(patch).length === 0) {
+        const current = await getSecuritySettings(interaction.guildId!);
+        await interaction.editReply({ embeds: [Embeds.info(
+            `**Anti-raid** is ${current.antiRaidEnabled ? '🟢 enabled' : '🔴 disabled'}\n` +
+            `Threshold: **${current.raidJoinThreshold}** joins / **${current.raidWindowSeconds}s**\n` +
+            `Action: **${current.raidAction}**\n` +
+            `Lockdown duration: **${current.lockdownMinutes}** minute(s)`,
+            '🛡️ Anti-Raid Settings',
+        )] });
+        return;
+    }
+
+    try {
+        await updateSecuritySettings(interaction.guildId!, patch);
+        await interaction.editReply({ embeds: [Embeds.success('Anti-raid settings updated.')] });
+        log.info(`${interaction.user.tag} updated anti-raid settings in guild ${interaction.guildId}.`);
+    } catch (err) {
+        log.error('Failed to update anti-raid settings:', err);
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
+    }
+}
+
+// ─── /setup security nuke ─────────────────────────────────────────────────────
+// Same optional-patch pattern as handleSecurityRaid above.
+
+async function handleSecurityNuke(interaction: ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply({ ephemeral: true });
+
+    const enabled      = interaction.options.getBoolean('enabled');
+    const threshold     = interaction.options.getInteger('threshold');
+    const windowSeconds  = interaction.options.getInteger('window_seconds');
+    const actionInput    = interaction.options.getString('action');
+
+    const patch: Partial<SecuritySettings> = {};
+    if (enabled !== null) patch.antiNukeEnabled = enabled;
+    if (threshold !== null) patch.nukeActionThreshold = threshold;
+    if (windowSeconds !== null) patch.nukeWindowSeconds = windowSeconds;
+
+    if (actionInput !== null) {
+        if (!isNukeAction(actionInput)) {
+            await interaction.editReply({ embeds: [Embeds.error(`\`${actionInput}\` is not a valid nuke action.`)] });
+            return;
+        }
+        patch.nukeAction = actionInput;
+    }
+
+    if (Object.keys(patch).length === 0) {
+        const current = await getSecuritySettings(interaction.guildId!);
+        await interaction.editReply({ embeds: [Embeds.info(
+            `**Anti-nuke** is ${current.antiNukeEnabled ? '🟢 enabled' : '🔴 disabled'}\n` +
+            `Threshold: **${current.nukeActionThreshold}** destructive actions / **${current.nukeWindowSeconds}s**\n` +
+            `Action: **${current.nukeAction}**\n` +
+            `Trusted role: ${current.trustedRoleId ? `<@&${current.trustedRoleId}>` : '*none*'}`,
+            '🛡️ Anti-Nuke Settings',
+        )] });
+        return;
+    }
+
+    try {
+        await updateSecuritySettings(interaction.guildId!, patch);
+        await interaction.editReply({ embeds: [Embeds.success('Anti-nuke settings updated.')] });
+        log.info(`${interaction.user.tag} updated anti-nuke settings in guild ${interaction.guildId}.`);
+    } catch (err) {
+        log.error('Failed to update anti-nuke settings:', err);
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
+    }
+}
+
+// ─── /setup security trusted-role ─────────────────────────────────────────────
+// Members holding this role are skipped entirely by nukeGuard's threshold
+// check — meant for co-owners/trusted staff whose legitimate bulk actions
+// (e.g. pruning old channels) shouldn't ever risk getting punished.
+
+async function handleSecurityTrustedRole(interaction: ChatInputCommandInteraction): Promise<void> {
+    await interaction.deferReply({ ephemeral: true });
+
+    const role = interaction.options.getRole('role');
+
+    try {
+        await updateSecuritySettings(interaction.guildId!, { trustedRoleId: role?.id ?? null });
+
+        await interaction.editReply({ embeds: [
+            role
+                ? Embeds.success(`Members with <@&${role.id}> are now exempt from anti-nuke punishment.`)
+                : Embeds.success('The anti-nuke trusted-role exemption has been cleared.')
+        ]});
+
+        log.info(`${interaction.user.tag} set security trusted-role to ${role?.id ?? 'none'} in guild ${interaction.guildId}.`);
+    } catch (err) {
+        log.error('Failed to update trusted role:', err);
+        await interaction.editReply({ embeds: [Embeds.error('Failed to save that setting. The action was not completed.')] });
+    }
+}
+
 async function handleConfigView(interaction: ChatInputCommandInteraction): Promise<void> {
     await interaction.deferReply({ ephemeral: true });
 
     try {
         const guildId = interaction.guildId!;
 
-        const [logChannels, commandChannelIds, roles] = await Promise.all([
+        const [logChannels, commandChannelIds, roles, security] = await Promise.all([
             getAllLogChannels(guildId),
             getCommandChannelIds(guildId),
             getAllRoles(guildId),
+            getSecuritySettings(guildId),
         ]);
 
         const loggingLines = LOG_CATEGORIES.map(category => {
@@ -316,6 +497,8 @@ async function handleConfigView(interaction: ChatInputCommandInteraction): Promi
                 { name: '📋 Log Channels',    value: loggingLines.join('\n'), inline: false },
                 { name: '🔒 Command Channels', value: commandChannelValue,     inline: false },
                 { name: '🎭 Roles',            value: ROLE_TYPES.map(type => roles[type] ? `**${type}** — <@&${roles[type]}>` : `**${type}** — *not configured*`).join('\n'), inline: false },
+                { name: '🛡️ Anti-Raid',        value: `${security.antiRaidEnabled ? '🟢' : '🔴'} ${security.raidJoinThreshold} joins / ${security.raidWindowSeconds}s — action: **${security.raidAction}**`, inline: false },
+                { name: '🛡️ Anti-Nuke',        value: `${security.antiNukeEnabled ? '🟢' : '🔴'} ${security.nukeActionThreshold} actions / ${security.nukeWindowSeconds}s — action: **${security.nukeAction}**${security.trustedRoleId ? ` — trusted: <@&${security.trustedRoleId}>` : ''}`, inline: false },
             )
             .setFooter({ text: config.meta.footer })
             .setTimestamp();

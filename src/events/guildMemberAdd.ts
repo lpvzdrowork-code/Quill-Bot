@@ -4,6 +4,7 @@ import { Embeds } from '../utils/embeds.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { prisma } from '../lib/prisma.js';
 import { getRoleId } from '../utils/guildConfig.js';
+import { handleJoinForRaidGuard } from '../utils/raidGuard.js';
 import { createLogger } from '../utils/logger.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
@@ -18,6 +19,16 @@ const event: BotEvent = {
         log.info(`${member.user.username} joined ${member.guild.name}.`);
 
         await sendLog(member.guild.id, 'member-logs', Embeds.memberJoin(member.user));
+
+        // ── Anti-raid ──────────────────────────────────────────────────────────
+        // Feeds this join into the sliding-window join-rate tracker. Isolated
+        // in its own try-catch so a raidGuard failure can never block the
+        // blacklist-persistence check below it.
+        try {
+            await handleJoinForRaidGuard(member);
+        } catch (err) {
+            log.error(`Anti-raid check failed for ${member.user.username}'s join:`, err);
+        }
 
         // ── Blacklist persistence ─────────────────────────────────────────────
         // If this user has an active blacklist record, re-apply the role
