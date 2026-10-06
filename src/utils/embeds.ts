@@ -55,6 +55,7 @@ const SEVERITY_BY_ACTION: Record<string, Severity> = {
     unlock:          'positive',
     slowmode:        'routine',
     purge:           'routine',
+    'force purge':   'moderate',
     unban:           'positive',
     untimeout:       'positive',
     unblacklist:     'positive',

@@ -81,7 +81,7 @@ const command: BotCommand = {
             }
 
             if (deletable.length === 0) {
-                await interaction.editReply({ embeds: [Embeds.error('No deletable messages found. Messages older than 14 days cannot be bulk deleted.')] });
+                await interaction.editReply({ embeds: [Embeds.error('No deletable messages found. Messages older than 14 days cannot be bulk deleted. Use `/forcepurge` for older messages.')] });
                 return;
             }
 
