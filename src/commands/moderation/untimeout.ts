@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, GuildMember } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, InteractionContextType, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
@@ -14,6 +14,7 @@ const command: BotCommand = {
         .setName('untimeout')
         .setDescription('Removes a timeout from a member.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .setContexts(InteractionContextType.Guild)
         .addUserOption(option => option
             .setName('target')
             .setDescription('The member to remove the timeout from.')
@@ -26,7 +27,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const target = interaction.options.getMember('target') as GuildMember | null;
         const reason = interaction.options.getString('reason') ?? 'No reason provided.';

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
@@ -12,6 +12,7 @@ const command: BotCommand = {
         .setName('unban')
         .setDescription('Unbans a user from the server.')
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
+        .setContexts(InteractionContextType.Guild)
         .addStringOption(option => option
             .setName('user_id')
             .setDescription('The ID of the user to unban.')
@@ -24,7 +25,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const userId = interaction.options.getString('user_id', true).trim();
         const reason = interaction.options.getString('reason') ?? 'No reason provided.';

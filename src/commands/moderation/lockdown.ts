@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
@@ -19,6 +19,7 @@ const command: BotCommand = {
         .setName('lockdown')
         .setDescription('Manually engage or lift server lockdown (raises/restores verification level).')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setContexts(InteractionContextType.Guild)
         .addStringOption(option => option
             .setName('action')
             .setDescription('Engage or lift lockdown.')
@@ -30,7 +31,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const action = interaction.options.getString('action', true) as 'engage' | 'lift';
         const guild  = interaction.guild!;

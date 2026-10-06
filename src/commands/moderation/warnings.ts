@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, EmbedBuilder, InteractionContextType, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { prisma } from '../../lib/prisma.js';
 import { paginate } from '../../utils/paginator.js';
@@ -15,6 +15,7 @@ const command: BotCommand = {
         .setName('warnings')
         .setDescription('Lists all warnings for a member.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers)
+        .setContexts(InteractionContextType.Guild)
         .addUserOption(option => option
             .setName('target')
             .setDescription('The member to check warnings for.')
@@ -22,7 +23,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const target = interaction.options.getMember('target') as GuildMember | null;
 

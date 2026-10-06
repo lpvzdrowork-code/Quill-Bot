@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder, InteractionContextType, MessageFlags } from 'discord.js';
 import type { ChatInputCommandInteraction, TextChannel } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { config } from '../../config.js';
@@ -59,6 +59,7 @@ const command: BotCommand = {
         .setName('setup')
         .setDescription('Configure Quill for this server.')
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
+        .setContexts(InteractionContextType.Guild)
 
         .addSubcommand(sub => sub
             .setName('logging')
@@ -186,7 +187,7 @@ const command: BotCommand = {
                     await handleSecurityTrustedRole(interaction);
                     break;
                 default:
-                    await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], ephemeral: true });
+                    await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], flags: MessageFlags.Ephemeral });
             }
             return;
         }
@@ -205,7 +206,7 @@ const command: BotCommand = {
                 await handleRole(interaction);
                 break;
             default:
-                await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], ephemeral: true });
+                await interaction.reply({ embeds: [Embeds.error('Unknown subcommand.')], flags: MessageFlags.Ephemeral });
         }
     },
 };
@@ -217,7 +218,7 @@ const command: BotCommand = {
 // turns it back on.
 
 async function handleLogging(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const categoryInput = interaction.options.getString('category', true);
     const channel        = interaction.options.getChannel('channel', true) as TextChannel;
@@ -245,7 +246,7 @@ async function handleLogging(interaction: ChatInputCommandInteraction): Promise<
 // "only in designated channels".
 
 async function handleCommandChannel(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const action  = interaction.options.getString('action', true) as 'add' | 'remove';
     const channel = interaction.options.getChannel('channel', true) as TextChannel;
@@ -283,7 +284,7 @@ async function handleCommandChannel(interaction: ChatInputCommandInteraction): P
 // run for that category at least once.
 
 async function handleToggle(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const categoryInput = interaction.options.getString('category', true);
     const enabled        = interaction.options.getBoolean('enabled', true);
@@ -321,7 +322,7 @@ async function handleToggle(interaction: ChatInputCommandInteraction): Promise<v
 // ever valid) across a single server.
 
 async function handleRole(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const typeInput = interaction.options.getString('type', true);
     const role       = interaction.options.getRole('role', true);
@@ -349,7 +350,7 @@ async function handleRole(interaction: ChatInputCommandInteraction): Promise<voi
 // without changing anything.
 
 async function handleSecurityRaid(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const enabled         = interaction.options.getBoolean('enabled');
     const threshold        = interaction.options.getInteger('threshold');
@@ -397,7 +398,7 @@ async function handleSecurityRaid(interaction: ChatInputCommandInteraction): Pro
 // Same optional-patch pattern as handleSecurityRaid above.
 
 async function handleSecurityNuke(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const enabled      = interaction.options.getBoolean('enabled');
     const threshold     = interaction.options.getInteger('threshold');
@@ -445,7 +446,7 @@ async function handleSecurityNuke(interaction: ChatInputCommandInteraction): Pro
 // (e.g. pruning old channels) shouldn't ever risk getting punished.
 
 async function handleSecurityTrustedRole(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const role = interaction.options.getRole('role');
 
@@ -466,7 +467,7 @@ async function handleSecurityTrustedRole(interaction: ChatInputCommandInteractio
 }
 
 async function handleConfigView(interaction: ChatInputCommandInteraction): Promise<void> {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     try {
         const guildId = interaction.guildId!;

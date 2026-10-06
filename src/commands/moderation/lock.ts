@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, ChannelType } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, ChannelType, InteractionContextType, MessageFlags } from 'discord.js';
 import type { TextChannel } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
@@ -12,6 +12,7 @@ const command: BotCommand = {
         .setName('lock')
         .setDescription('Locks or unlocks a channel, preventing members from sending messages.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+        .setContexts(InteractionContextType.Guild)
         .addStringOption(option => option
             .setName('action')
             .setDescription('Lock or unlock the channel.')
@@ -34,7 +35,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const action  = interaction.options.getString('action', true) as 'lock' | 'unlock';
         const reason  = interaction.options.getString('reason') ?? 'No reason provided.';

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } from 'discord.js';
 import type { TextChannel } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
@@ -12,6 +12,7 @@ const command: BotCommand = {
         .setName('purge')
         .setDescription('Bulk-deletes messages from the current channel.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+        .setContexts(InteractionContextType.Guild)
         .addIntegerOption(option => option
             .setName('amount')
             .setDescription('Number of messages to delete (1–100).')
@@ -26,7 +27,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const amount = interaction.options.getInteger('amount', true);
         const target = interaction.options.getUser('target');

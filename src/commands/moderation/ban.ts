@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, MessageFlags } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, InteractionContextType, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
@@ -13,6 +13,7 @@ const command: BotCommand = {
         .setName('ban')
         .setDescription('Bans a member from the server.')
         .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers)
+        .setContexts(InteractionContextType.Guild)
         .addUserOption(option => option
             .setName('target')
             .setDescription('The member to ban.')

@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, InteractionContextType, MessageFlags } from 'discord.js';
 import type { TextChannel } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
@@ -12,6 +12,7 @@ const command: BotCommand = {
         .setName('slowmode')
         .setDescription('Sets the slowmode delay for the current channel.')
         .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
+        .setContexts(InteractionContextType.Guild)
         .addIntegerOption(option => option
             .setName('seconds')
             .setDescription('Slowmode delay in seconds (0 to disable, max 21600).')
@@ -26,7 +27,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const seconds = interaction.options.getInteger('seconds', true);
         const reason  = interaction.options.getString('reason') ?? 'No reason provided.';
