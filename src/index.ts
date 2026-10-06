@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { client } from './client.js';
 import { logger } from './utils/logger.js';
 import { loadEvents } from './utils/eventLoader.js';
-import { loadCommands, deployCommands } from './utils/commandLoader.js';
+import { loadCommands } from './utils/commandLoader.js';
 
 // ─── Env Validation ───────────────────────────────────────────────────────────
 

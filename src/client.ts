@@ -12,8 +12,6 @@ import type { BotCommand } from './types/index.js';
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
         GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildModeration, // needed for GuildAuditLogEntryCreate (anti-nuke)
     ],

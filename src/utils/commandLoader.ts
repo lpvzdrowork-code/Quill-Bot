@@ -1,47 +1,21 @@
-import { REST, Routes } from 'discord.js';
-import { readdirSync, statSync } from 'fs';
-import { join, dirname } from 'path';
-import { fileURLToPath, pathToFileURL } from 'url';
+import { pathToFileURL } from 'url';
 import { client } from '../client.js';
 import { createLogger } from './logger.js';
+import { collectCommandFiles, COMMANDS_DIR } from './commandFiles.js';
 import type { BotCommand } from '../types/index.js';
 
 const log = createLogger('CommandLoader');
 
-// ─── File Collection ──────────────────────────────────────────────────────────
-// Recursively collects all .ts/.js command files from /commands and any
-// subdirectories (e.g. commands/moderation/, commands/testing/).
-
-function collectCommandFiles(dir: string): string[] {
-    const entries = readdirSync(dir);
-    const files: string[] = [];
-
-    for (const entry of entries) {
-        const fullPath = join(dir, entry);
-        const stat     = statSync(fullPath);
-
-        if (stat.isDirectory()) {
-            files.push(...collectCommandFiles(fullPath));
-        } else if (entry.endsWith('.ts') || entry.endsWith('.js')) {
-            files.push(fullPath);
-        }
-    }
-
-    return files;
-}
-
 // ─── Load Commands ────────────────────────────────────────────────────────────
-// Scans /commands and all subdirectories, imports each file, validates the
+// Scans /commands and all subdirectories (file discovery lives in
+// commandFiles.ts, shared with deploy.ts), imports each file, validates the
 // export, and registers it onto client.commands keyed by name.
 
 export async function loadCommands(): Promise<void> {
-    const __dirname  = dirname(fileURLToPath(import.meta.url));
-    const commandsPath = join(__dirname, '..', 'commands');
-
     let files: string[];
 
     try {
-        files = collectCommandFiles(commandsPath);
+        files = collectCommandFiles(COMMANDS_DIR);
     } catch {
         log.warn('No /commands directory found or it is empty. Skipping command loading.');
         return;
@@ -85,34 +59,4 @@ export async function loadCommands(): Promise<void> {
     }
 
     log.info(`Loaded ${loaded}/${files.length} command(s).`);
-}
-
-// ─── Deploy Commands ──────────────────────────────────────────────────────────
-// Pushes all loaded commands to Discord's API so they appear in the slash menu.
-// Guild deploy is instant (dev), global deploy takes up to 1 hour (production).
-
-export async function deployCommands(): Promise<void> {
-    const token    = process.env.DISCORD_TOKEN;
-    const clientId = process.env.CLIENT_ID;
-
-    if (!token || !clientId) {
-        log.error('Missing DISCORD_TOKEN or CLIENT_ID in .env. Cannot deploy commands.');
-        return;
-    }
-
-    const commands = [...client.commands.values()].map(cmd => cmd.data.toJSON());
-
-    if (commands.length === 0) {
-        log.warn('No commands to deploy.');
-        return;
-    }
-
-    const rest = new REST().setToken(token);
-
-    try {
-        await rest.put(Routes.applicationCommands(clientId), { body: commands });
-        log.info(`Deployed ${commands.length} command(s) globally.`);
-    } catch (err) {
-        log.error('Failed to deploy commands:', err);
-    }
 }
