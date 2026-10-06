@@ -1,0 +1,6 @@
+import { register } from 'node:module';
+import { pathToFileURL } from 'node:url';
+
+// Registers the ts-node ESM loader so `node --import ./register.mjs src/index.ts`
+// can run TypeScript directly (resolves './foo.js' imports to './foo.ts').
+register('ts-node/esm', pathToFileURL('./'));
