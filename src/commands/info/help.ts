@@ -10,12 +10,12 @@ import { config } from '../../config.js';
 // command file is the only maintenance this ever needs.
 
 const CATEGORY_LABELS: Record<string, string> = {
-    moderation: '🛡️ Moderation',
-    config:     '⚙️ Configuration',
-    info:       'ℹ️ Info',
-    tools:      '🛠️ Tools',
-    testing:    '🧪 Testing',
-    general:    '📦 General',
+    moderation: 'Moderation',
+    config:     'Configuration',
+    info:       'Information',
+    tools:      'Tools',
+    testing:    'Testing',
+    general:    'General',
 };
 
 const command: BotCommand = {
@@ -28,7 +28,7 @@ const command: BotCommand = {
 
         for (const cmd of client.commands.values()) {
             const category = cmd.category ?? 'general';
-            const line = `\`/${cmd.data.name}\` — ${cmd.data.description}`;
+            const line = `\`/${cmd.data.name}\`  ${cmd.data.description}`;
 
             if (!byCategory.has(category)) byCategory.set(category, []);
             byCategory.get(category)!.push(line);
@@ -36,8 +36,8 @@ const command: BotCommand = {
 
         const embed = new EmbedBuilder()
             .setColor(config.colors.info)
-            .setTitle(`📖 ${config.meta.name} — Commands`)
-            .setDescription(`${client.commands.size} command(s) loaded.`)
+            .setTitle(`${config.meta.name} Commands`)
+            .setDescription(`${client.commands.size} commands available.`)
             .setFooter({ text: `${config.meta.footer} • v${config.meta.version}` })
             .setTimestamp();
 

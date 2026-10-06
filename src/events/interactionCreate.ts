@@ -61,8 +61,8 @@ const event: BotEvent = {
             if (suspended) {
                 await interaction.reply({
                     content: reason
-                        ? `❌ This server has been suspended from using Quill.\nReason: ${reason}`
-                        : '❌ This server has been suspended from using Quill.',
+                        ? `This server has been suspended from using Quill.\nReason: ${reason}`
+                        : 'This server has been suspended from using Quill.',
                     flags: MessageFlags.Ephemeral,
                 });
                 return;
@@ -84,7 +84,7 @@ const event: BotEvent = {
         const remainingCooldown = checkCooldown(interaction.commandName, interaction.user.id);
         if (remainingCooldown !== null) {
             await interaction.reply({
-                content:   `⏳ Please wait **${remainingCooldown}s** before using \`/${interaction.commandName}\` again.`,
+                content:   `Please wait **${remainingCooldown}s** before using \`/${interaction.commandName}\` again.`,
                 flags:     MessageFlags.Ephemeral,
             });
             return;
@@ -105,7 +105,7 @@ const event: BotEvent = {
                 const channelList = channelIds.map(id => `<#${id}>`).join(', ');
 
                 await interaction.reply({
-                    content:   `❌ Commands aren't allowed in this channel. Try: ${channelList}`,
+                    content:   `Commands aren't allowed in this channel. Try: ${channelList}`,
                     flags:     MessageFlags.Ephemeral,
                 });
                 return;
@@ -135,7 +135,7 @@ const event: BotEvent = {
             if (interaction.guildId) {
                 await sendLog(interaction.guildId, 'message-logs', Embeds.error(
                     `\`/${interaction.commandName}\` threw an error for ${interaction.user}.\n\`\`\`${String(err instanceof Error ? err.message : err).slice(0, 500)}\`\`\``,
-                    '⚠️ Command Error',
+                    'Command Error',
                 ));
             }
         }

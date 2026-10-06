@@ -34,7 +34,7 @@ const command: BotCommand = {
         .setDescription("Shows Quill's current health and performance metrics."),
 
     async execute(interaction) {
-        const sent = await interaction.reply({ content: '📡 Gathering metrics...', fetchReply: true });
+        const sent = await interaction.reply({ content: 'Gathering metrics...', fetchReply: true });
 
         const roundtrip = sent.createdTimestamp - interaction.createdTimestamp;
         const websocket  = interaction.client.ws.ping;
@@ -42,28 +42,30 @@ const command: BotCommand = {
         // ── DB latency — a live round-trip, not a cached/assumed value ────────
 
         let dbLatency: string;
+        let dbReachable = true;
         try {
             const start = Date.now();
             await prisma.$queryRaw`SELECT 1`;
-            dbLatency = `${Date.now() - start}ms`;
+            dbLatency = `${Date.now() - start} ms`;
         } catch (err) {
             log.error('Database health check failed:', err);
-            dbLatency = '⚠️ unreachable';
+            dbLatency   = 'Unreachable';
+            dbReachable = false;
         }
 
         const memoryMb = (process.memoryUsage().heapUsed / 1024 / 1024).toFixed(1);
         const uptime   = formatUptime(interaction.client.uptime ?? 0);
 
         const embed = new EmbedBuilder()
-            .setColor(dbLatency.startsWith('⚠️') ? config.colors.error : config.colors.info)
-            .setTitle(`📡 ${config.meta.name} System Status`)
+            .setColor(dbReachable ? config.colors.info : config.colors.error)
+            .setTitle(`${config.meta.name} System Status`)
             .addFields(
-                { name: '🏓 Roundtrip', value: `${roundtrip}ms`, inline: true },
-                { name: '🌐 WebSocket', value: `${websocket}ms`, inline: true },
-                { name: '🗄️ Database',  value: dbLatency,        inline: true },
-                { name: '⏱️ Uptime',    value: uptime,           inline: true },
-                { name: '💾 Memory',    value: `${memoryMb} MB`, inline: true },
-                { name: '🏰 Guilds',    value: String(interaction.client.guilds.cache.size), inline: true },
+                { name: 'Roundtrip', value: `${roundtrip} ms`, inline: true },
+                { name: 'WebSocket', value: `${websocket} ms`, inline: true },
+                { name: 'Database',  value: dbLatency,           inline: true },
+                { name: 'Uptime',    value: uptime,              inline: true },
+                { name: 'Memory',    value: `${memoryMb} MB`,    inline: true },
+                { name: 'Servers',   value: String(interaction.client.guilds.cache.size), inline: true },
             )
             .setFooter({ text: `${config.meta.footer} • v${config.meta.version} • discord.js v${djsVersion}` })
             .setTimestamp();

@@ -35,12 +35,12 @@ export async function paginate(
         return new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setCustomId('page_prev')
-                .setLabel('◀ Prev')
+                .setLabel('Previous')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(page === 0),
             new ButtonBuilder()
                 .setCustomId('page_next')
-                .setLabel('Next ▶')
+                .setLabel('Next')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(page === pages.length - 1),
         );
@@ -72,12 +72,12 @@ export async function paginate(
         const disabled = new ActionRowBuilder<ButtonBuilder>().addComponents(
             new ButtonBuilder()
                 .setCustomId('page_prev')
-                .setLabel('◀ Prev')
+                .setLabel('Previous')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true),
             new ButtonBuilder()
                 .setCustomId('page_next')
-                .setLabel('Next ▶')
+                .setLabel('Next')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(true),
         );

@@ -87,7 +87,6 @@ const command: BotCommand = {
 
             function addPages<T extends { createdAt: Date; reason: string; moderatorId: string }>(
                 records: T[],
-                emoji: string,
                 label: string,
                 color: number,
                 extraField?: (r: T) => string,
@@ -101,7 +100,7 @@ const command: BotCommand = {
 
                 chunks.forEach((chunk, idx) => {
                     const embed = baseEmbed(
-                        `${emoji} ${label} — ${target!.user.username}`,
+                        `${label}: ${target!.user.username}`,
                         color,
                         records.length,
                         idx + 1,
@@ -121,46 +120,46 @@ const command: BotCommand = {
                 });
             }
 
-            addPages(bans, '🔨', 'Bans', config.colors.error,
+            addPages(bans, 'Bans', config.colors.error,
                 b => b.deleteDays > 0 ? `**Messages Deleted:** ${b.deleteDays} day(s)` : '');
 
-            addPages(kicks, '👢', 'Kicks', config.colors.error);
+            addPages(kicks, 'Kicks', config.colors.error);
 
-            addPages(timeouts, '⏱️', 'Timeouts', config.colors.mod,
+            addPages(timeouts, 'Timeouts', config.colors.mod,
                 t => `**Duration:** ${t.duration}s | **Expires:** <t:${Math.floor(t.expiresAt.getTime() / 1000)}:R>`);
 
-            addPages(warns, '⚠️', 'Warnings', config.colors.warn);
+            addPages(warns, 'Warnings', config.colors.warn);
 
             // ── Fix #1: Blacklist and Flag history now included ────────────────
 
-            addPages(blacklists, '🚫', 'Blacklists', config.colors.error,
+            addPages(blacklists, 'Blacklists', config.colors.error,
                 b => b.active
-                    ? '**Status:** 🔴 Active'
+                    ? '**Status:** Active'
                     : b.revokedAt
-                        ? `**Status:** ✅ Revoked <t:${Math.floor(b.revokedAt.getTime() / 1000)}:R>`
-                        : '**Status:** ✅ Revoked');
+                        ? `**Status:** Revoked <t:${Math.floor(b.revokedAt.getTime() / 1000)}:R>`
+                        : '**Status:** Revoked');
 
-            addPages(flags, '🚩', 'Flags', config.colors.warn,
+            addPages(flags, 'Flags', config.colors.warn,
                 f => f.active
-                    ? '**Status:** 🔴 Active'
+                    ? '**Status:** Active'
                     : f.revokedAt
-                        ? `**Status:** ✅ Revoked <t:${Math.floor(f.revokedAt.getTime() / 1000)}:R>`
-                        : '**Status:** ✅ Revoked');
+                        ? `**Status:** Revoked <t:${Math.floor(f.revokedAt.getTime() / 1000)}:R>`
+                        : '**Status:** Revoked');
 
             // ── Overview page (prepended) ─────────────────────────────────────
 
             const overview = new EmbedBuilder()
                 .setColor(config.colors.neutral)
-                .setTitle(`📋 Modlogs — ${target.user.username}`)
+                .setTitle(`Modlogs: ${target.user.username}`)
                 .setThumbnail(target.user.displayAvatarURL())
                 .setDescription(`**${total}** total action(s) on record.`)
                 .addFields(
-                    { name: '🔨 Bans',       value: String(bans.length),        inline: true },
-                    { name: '👢 Kicks',      value: String(kicks.length),       inline: true },
-                    { name: '⏱️ Timeouts',   value: String(timeouts.length),    inline: true },
-                    { name: '⚠️ Warnings',   value: String(warns.length),       inline: true },
-                    { name: '🚫 Blacklists', value: String(blacklists.length),  inline: true },
-                    { name: '🚩 Flags',      value: String(flags.length),       inline: true },
+                    { name: 'Bans',       value: String(bans.length),        inline: true },
+                    { name: 'Kicks',      value: String(kicks.length),       inline: true },
+                    { name: 'Timeouts',   value: String(timeouts.length),    inline: true },
+                    { name: 'Warnings',   value: String(warns.length),       inline: true },
+                    { name: 'Blacklists', value: String(blacklists.length),  inline: true },
+                    { name: 'Flags',      value: String(flags.length),       inline: true },
                 )
                 .setFooter({ text: `${config.meta.footer} • Page 1 of ${pages.length + 1} — use buttons to browse` })
                 .setTimestamp();

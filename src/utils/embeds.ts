@@ -4,11 +4,15 @@ import { config } from '../config.js';
 
 // ─── Embed Builder ────────────────────────────────────────────────────────────
 // Factory functions for consistent Discord embeds across the bot.
-// All embeds automatically get a timestamp and the standard footer.
 //
-// Call signatures are unchanged from the previous version of this file —
-// every existing call site (ban.ts, warn.ts, etc.) keeps working as-is.
-// All visual improvements live inside these factories.
+// Design rules (keep new embeds consistent with these):
+//   - No emoji, no decorative glyphs. Color carries status, text carries info.
+//   - Plain labels: "Member", "Moderator", "Reason". Title Case, no icons.
+//   - IDs in monospace, people as mentions, times as Discord timestamps.
+//   - Long free text (reasons) goes in a block quote so it reads as prose.
+//
+// Call signatures are unchanged — every existing call site (ban.ts, warn.ts,
+// etc.) keeps working as-is. All visual changes live inside these factories.
 
 // ─── Base ─────────────────────────────────────────────────────────────────────
 
@@ -30,31 +34,31 @@ function caseId(): string {
 }
 
 // ─── Severity ─────────────────────────────────────────────────────────────────
-// Drives the visual weight of a mod-action embed. Severe actions (ban,
-// blacklist) get a bolder title treatment; routine actions (warn, slowmode)
-// stay understated so the log channel doesn't cry wolf on every message.
+// Drives the accent color of a mod-action embed. Severe actions (ban,
+// blacklist) read red; routine actions (warn, slowmode) stay understated so
+// the log channel doesn't cry wolf on every message.
 
 type Severity = 'severe' | 'moderate' | 'routine' | 'positive' | 'neutral';
 
 const SEVERITY_BY_ACTION: Record<string, Severity> = {
-    ban:           'severe',
-    blacklist:     'severe',
-    softban:       'severe',
-    kick:          'moderate',
-    timeout:       'moderate',
-    flag:          'moderate',
-    warn:          'routine',
-    'warn removed': 'routine',
+    ban:             'severe',
+    blacklist:       'severe',
+    softban:         'severe',
+    kick:            'moderate',
+    timeout:         'moderate',
+    flag:            'moderate',
+    warn:            'routine',
+    'warn removed':  'routine',
     'warns cleared': 'routine',
-    warnings:      'routine',
-    lock:          'moderate',
-    unlock:        'positive',
-    slowmode:      'routine',
-    purge:         'routine',
-    unban:         'positive',
-    untimeout:     'positive',
-    unblacklist:   'positive',
-    unflag:        'positive',
+    warnings:        'routine',
+    lock:            'moderate',
+    unlock:          'positive',
+    slowmode:        'routine',
+    purge:           'routine',
+    unban:           'positive',
+    untimeout:       'positive',
+    unblacklist:     'positive',
+    unflag:          'positive',
 };
 
 const SEVERITY_COLOR: Record<Severity, ColorResolvable> = {
@@ -65,41 +69,33 @@ const SEVERITY_COLOR: Record<Severity, ColorResolvable> = {
     neutral:  config.colors.neutral,
 };
 
-// A slightly heavier visual marker for severe actions only — keeps routine
-// warns from feeling alarming while making bans/blacklists impossible to miss.
-const SEVERITY_BADGE: Record<Severity, string> = {
-    severe:   '🔴',
-    moderate: '🟠',
-    routine:  '',
-    positive: '',
-    neutral:  '',
-};
-
 function getSeverity(action: string): Severity {
     return SEVERITY_BY_ACTION[action.toLowerCase()] ?? 'neutral';
 }
 
 // ─── Generic Status Embeds ────────────────────────────────────────────────────
+// Status is communicated by the accent color alone. The description is the
+// message, verbatim, with nothing prepended.
 
 export const Embeds = {
 
     /** Green — action completed successfully. */
     success(description: string, title?: string): EmbedBuilder {
-        const embed = base(config.colors.success).setDescription(`✅ ${description}`);
+        const embed = base(config.colors.success).setDescription(description);
         if (title) embed.setTitle(title);
         return embed;
     },
 
-    /** Red — error or destructive action (ban, kick). */
+    /** Red — error or destructive action. */
     error(description: string, title?: string): EmbedBuilder {
-        const embed = base(config.colors.error).setDescription(`❌ ${description}`);
+        const embed = base(config.colors.error).setDescription(description);
         if (title) embed.setTitle(title);
         return embed;
     },
 
     /** Yellow — warning or flagged action. */
     warn(description: string, title?: string): EmbedBuilder {
-        const embed = base(config.colors.warn).setDescription(`⚠️ ${description}`);
+        const embed = base(config.colors.warn).setDescription(description);
         if (title) embed.setTitle(title);
         return embed;
     },
@@ -112,9 +108,16 @@ export const Embeds = {
     },
 
     // ─── Moderation Action Embed ──────────────────────────────────────────────
-    // `guild` is optional and new — when provided, the embed gets a branded
-    // author line (server icon + name) at the top. Every existing call site
-    // omits it and still works exactly as before, just without that one detail.
+    // Layout:
+    //   [server icon] Server Name                 (author line, if guild given)
+    //   Ban                                       (title)
+    //   Member        Moderator      Duration     (inline row)
+    //   @user         @mod           7 days
+    //   <id>          <id>
+    //   Reason
+    //   > quoted reason text
+    //                                  [avatar]
+    //   Quill Moderation • Case 1A2B3C
 
     modAction(options: {
         action:     string;
@@ -127,29 +130,18 @@ export const Embeds = {
     }): EmbedBuilder {
         const { action, target, moderator, reason, duration, extra, guild } = options;
 
-        const severity = getSeverity(action);
-        const color    = SEVERITY_COLOR[severity];
-        const badge     = SEVERITY_BADGE[severity];
-        const emoji    = getActionEmoji(action);
-
-        // Reason gets its own visual weight: long reasons are common (mods type
-        // paragraphs), so this field needs to look like prose, not a label/value
-        // pair crammed onto one line.
-        const reasonText = reason && reason.trim().length > 0
-            ? reason.trim()
-            : '*No reason provided.*';
+        const color = SEVERITY_COLOR[getSeverity(action)];
 
         const embed = base(color)
-            .setTitle(`${emoji} ${titleCase(action)}${badge ? `  ${badge}` : ''}`)
-            .addFields(
-                { name: '👤 Member',    value: `${target} (\`${target.id}\`)`,       inline: true },
-                { name: '🛡️ Moderator', value: `${moderator} (\`${moderator.id}\`)`, inline: true },
-            )
+            .setTitle(titleCase(action))
             .setThumbnail(target.displayAvatarURL({ size: 128 }))
-            .addFields({ name: '📝 Reason', value: truncate(reasonText, 1024), inline: false });
+            .addFields(
+                { name: 'Member',    value: identity(target),    inline: true },
+                { name: 'Moderator', value: identity(moderator), inline: true },
+            );
 
         if (duration) {
-            embed.addFields({ name: '⏳ Duration', value: duration, inline: true });
+            embed.addFields({ name: 'Duration', value: duration, inline: true });
         }
 
         if (extra) {
@@ -158,7 +150,9 @@ export const Embeds = {
             }
         }
 
-        embed.setFooter({ text: `${config.meta.footer} • Case ${caseId()}` });
+        embed.addFields({ name: 'Reason', value: quote(reason), inline: false });
+
+        embed.setFooter({ text: `${config.meta.footer}  •  Case ${caseId()}` });
 
         if (guild) {
             embed.setAuthor({
@@ -175,20 +169,20 @@ export const Embeds = {
     memberJoin(user: User): EmbedBuilder {
         const accountAgeMs = Date.now() - user.createdTimestamp;
         const isNewAccount = accountAgeMs < 7 * 24 * 60 * 60 * 1000; // under 7 days old
+        const created      = Math.floor(user.createdTimestamp / 1000);
 
         const embed = base(isNewAccount ? config.colors.warn : config.colors.success)
-            .setTitle(isNewAccount ? '👋 Member Joined  ⚡ New Account' : '👋 Member Joined')
-            .setDescription(`${user} joined the server.`)
+            .setTitle('Member Joined')
             .setThumbnail(user.displayAvatarURL({ size: 128 }))
             .addFields(
-                { name: '🆔 User', value: `${user.username} (\`${user.id}\`)`, inline: true },
-                { name: '📅 Account Created', value: `<t:${Math.floor(user.createdTimestamp / 1000)}:R>`, inline: true },
+                { name: 'Member',          value: identity(user),                          inline: true },
+                { name: 'Account Created', value: `<t:${created}:D>\n<t:${created}:R>`,    inline: true },
             );
 
         if (isNewAccount) {
             embed.addFields({
-                name:  '⚡ Heads up',
-                value: 'This account is less than 7 days old — worth a second look if anything seems off.',
+                name:   'Account Age',
+                value:  'Under 7 days old. Review if anything looks off.',
                 inline: false,
             });
         }
@@ -197,19 +191,21 @@ export const Embeds = {
     },
 
     memberLeave(user: User): EmbedBuilder {
+        const created = Math.floor(user.createdTimestamp / 1000);
+
         return base(config.colors.neutral)
-            .setTitle('🚪 Member Left')
-            .setDescription(`${user.username} left the server.`)
+            .setTitle('Member Left')
             .setThumbnail(user.displayAvatarURL({ size: 128 }))
-            .addFields({ name: '🆔 User', value: `${user.username} (\`${user.id}\`)`, inline: true });
+            .addFields(
+                { name: 'Member',          value: identity(user),                       inline: true },
+                { name: 'Account Created', value: `<t:${created}:D>\n<t:${created}:R>`, inline: true },
+            );
     },
 
     // ─── Custom / Announcement Embed ──────────────────────────────────────────
     // Backs /embed. Deliberately spare compared to modAction() above — no
-    // emoji-prefixed title, no case ID, no auto footer. A staff member's own
-    // title/description/footer are the only text that ever appears. Nothing
-    // here identifies Quill as the sender unless the author explicitly types
-    // a footer saying so.
+    // case ID, no auto footer. A staff member's own title/description/footer
+    // are the only text that ever appears.
 
     custom(options: {
         color:       ColorResolvable;
@@ -247,27 +243,18 @@ function titleCase(action: string): string {
         .join(' ');
 }
 
-function getActionEmoji(action: string): string {
-    const lower = action.toLowerCase();
-    if (lower === 'ban')           return '🔨';
-    if (lower === 'unban')         return '✅';
-    if (lower === 'kick')          return '👢';
-    if (lower === 'softban')       return '🔨';
-    if (lower === 'warn')          return '⚠️';
-    if (lower === 'warnings')      return '📋';
-    if (lower === 'warn removed')  return '🗑️';
-    if (lower === 'warns cleared') return '🧹';
-    if (lower === 'mute')          return '🔇';
-    if (lower === 'unmute')        return '🔊';
-    if (lower === 'timeout')       return '⏱️';
-    if (lower === 'untimeout')     return '✅';
-    if (lower === 'blacklist')     return '🚫';
-    if (lower === 'unblacklist')   return '✅';
-    if (lower === 'flag')          return '🚩';
-    if (lower === 'unflag')        return '✅';
-    if (lower === 'lock')          return '🔒';
-    if (lower === 'unlock')        return '🔓';
-    if (lower === 'slowmode')      return '🐢';
-    if (lower === 'purge')         return '🧹';
-    return '📋';
+/** Mention on the first line, monospace ID on the second. */
+function identity(user: User): string {
+    return `${user}\n\`${user.id}\``;
+}
+
+/** Block-quotes free text so multi-line reasons read as prose, not a label. */
+function quote(text?: string): string {
+    const cleaned = text?.trim();
+    if (!cleaned) return '> No reason provided.';
+
+    return truncate(cleaned, 900)
+        .split('\n')
+        .map(line => `> ${line}`)
+        .join('\n');
 }

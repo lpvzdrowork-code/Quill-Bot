@@ -302,7 +302,7 @@ async function handleToggle(interaction: ChatInputCommandInteraction): Promise<v
             return;
         }
 
-        await interaction.editReply({ embeds: [Embeds.success(`**${categoryInput}** is now ${enabled ? '🟢 enabled' : '🔴 disabled'}.`)] });
+        await interaction.editReply({ embeds: [Embeds.success(`**${categoryInput}** is now ${enabled ? 'enabled' : 'disabled'}.`)] });
         log.info(`${interaction.user.tag} set "${categoryInput}" enabled=${enabled} in guild ${interaction.guildId}.`);
 
     } catch (err) {
@@ -375,11 +375,11 @@ async function handleSecurityRaid(interaction: ChatInputCommandInteraction): Pro
     if (Object.keys(patch).length === 0) {
         const current = await getSecuritySettings(interaction.guildId!);
         await interaction.editReply({ embeds: [Embeds.info(
-            `**Anti-raid** is ${current.antiRaidEnabled ? '🟢 enabled' : '🔴 disabled'}\n` +
+            `Status: **${current.antiRaidEnabled ? 'Enabled' : 'Disabled'}**\n` +
             `Threshold: **${current.raidJoinThreshold}** joins / **${current.raidWindowSeconds}s**\n` +
             `Action: **${current.raidAction}**\n` +
             `Lockdown duration: **${current.lockdownMinutes}** minute(s)`,
-            '🛡️ Anti-Raid Settings',
+            'Anti-Raid Settings',
         )] });
         return;
     }
@@ -421,11 +421,11 @@ async function handleSecurityNuke(interaction: ChatInputCommandInteraction): Pro
     if (Object.keys(patch).length === 0) {
         const current = await getSecuritySettings(interaction.guildId!);
         await interaction.editReply({ embeds: [Embeds.info(
-            `**Anti-nuke** is ${current.antiNukeEnabled ? '🟢 enabled' : '🔴 disabled'}\n` +
+            `Status: **${current.antiNukeEnabled ? 'Enabled' : 'Disabled'}**\n` +
             `Threshold: **${current.nukeActionThreshold}** destructive actions / **${current.nukeWindowSeconds}s**\n` +
             `Action: **${current.nukeAction}**\n` +
-            `Trusted role: ${current.trustedRoleId ? `<@&${current.trustedRoleId}>` : '*none*'}`,
-            '🛡️ Anti-Nuke Settings',
+            `Trusted role: ${current.trustedRoleId ? `<@&${current.trustedRoleId}>` : 'None'}`,
+            'Anti-Nuke Settings',
         )] });
         return;
     }
@@ -481,25 +481,38 @@ async function handleConfigView(interaction: ChatInputCommandInteraction): Promi
 
         const loggingLines = LOG_CATEGORIES.map(category => {
             const entry = logChannels[category];
-            if (!entry) return `**${category}** — *not configured*`;
+            if (!entry) return `**${category}**: not configured`;
 
-            const status = entry.enabled ? '🟢 enabled' : '🔴 disabled';
-            return `**${category}** — <#${entry.channelId}> (${status})`;
+            const status = entry.enabled ? 'enabled' : 'disabled';
+            return `**${category}**: <#${entry.channelId}> (${status})`;
         });
 
         const commandChannelValue = commandChannelIds.length === 0
-            ? '*Unrestricted — commands work in any channel.*'
+            ? 'Unrestricted. Commands work in any channel.'
             : commandChannelIds.map(id => `<#${id}>`).join('\n');
 
         const embed = new EmbedBuilder()
             .setColor(config.colors.info)
-            .setTitle('⚙️ Quill Configuration')
+            .setTitle('Quill Configuration')
             .addFields(
-                { name: '📋 Log Channels',    value: loggingLines.join('\n'), inline: false },
-                { name: '🔒 Command Channels', value: commandChannelValue,     inline: false },
-                { name: '🎭 Roles',            value: ROLE_TYPES.map(type => roles[type] ? `**${type}** — <@&${roles[type]}>` : `**${type}** — *not configured*`).join('\n'), inline: false },
-                { name: '🛡️ Anti-Raid',        value: `${security.antiRaidEnabled ? '🟢' : '🔴'} ${security.raidJoinThreshold} joins / ${security.raidWindowSeconds}s — action: **${security.raidAction}**`, inline: false },
-                { name: '🛡️ Anti-Nuke',        value: `${security.antiNukeEnabled ? '🟢' : '🔴'} ${security.nukeActionThreshold} actions / ${security.nukeWindowSeconds}s — action: **${security.nukeAction}**${security.trustedRoleId ? ` — trusted: <@&${security.trustedRoleId}>` : ''}`, inline: false },
+                { name: 'Log Channels',     value: loggingLines.join('\n'), inline: false },
+                { name: 'Command Channels', value: commandChannelValue,     inline: false },
+                { name: 'Roles',            value: ROLE_TYPES.map(type => roles[type] ? `**${type}**: <@&${roles[type]}>` : `**${type}**: not configured`).join('\n'), inline: false },
+                {
+                    name:   'Anti-Raid',
+                    value:  `Status: **${security.antiRaidEnabled ? 'Enabled' : 'Disabled'}**\n` +
+                            `Threshold: **${security.raidJoinThreshold}** joins / **${security.raidWindowSeconds}s**\n` +
+                            `Action: **${security.raidAction}**`,
+                    inline: true,
+                },
+                {
+                    name:   'Anti-Nuke',
+                    value:  `Status: **${security.antiNukeEnabled ? 'Enabled' : 'Disabled'}**\n` +
+                            `Threshold: **${security.nukeActionThreshold}** actions / **${security.nukeWindowSeconds}s**\n` +
+                            `Action: **${security.nukeAction}**\n` +
+                            `Trusted role: ${security.trustedRoleId ? `<@&${security.trustedRoleId}>` : 'None'}`,
+                    inline: true,
+                },
             )
             .setFooter({ text: config.meta.footer })
             .setTimestamp();

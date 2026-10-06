@@ -47,10 +47,10 @@ const command: BotCommand = {
                 await engageLockdown(guild, settings.lockdownMinutes);
 
                 await interaction.editReply({ embeds: [Embeds.success(
-                    `🔒 Lockdown engaged — verification level raised for ${settings.lockdownMinutes} minute(s), or until \`/lockdown lift\`.`,
+                    `Lockdown engaged. Verification level raised for ${settings.lockdownMinutes} minute(s), or until \`/lockdown lift\`.`,
                 )] });
 
-                await sendLog(guild.id, 'staff-logs', Embeds.warn(`🔒 Lockdown manually engaged by ${interaction.user}.`, 'Manual Lockdown'));
+                await sendLog(guild.id, 'staff-logs', Embeds.warn(`Lockdown manually engaged by ${interaction.user}.`, 'Manual Lockdown'));
 
             } else {
                 if (!isLockdownActive(guild.id)) {
@@ -59,9 +59,9 @@ const command: BotCommand = {
                 }
 
                 await revertLockdown(guild);
-                await interaction.editReply({ embeds: [Embeds.success('🔓 Lockdown lifted — verification level restored.')] });
+                await interaction.editReply({ embeds: [Embeds.success('Lockdown lifted. Verification level restored.')] });
 
-                await sendLog(guild.id, 'staff-logs', Embeds.info(`🔓 Lockdown manually lifted by ${interaction.user}.`, 'Manual Lockdown'));
+                await sendLog(guild.id, 'staff-logs', Embeds.info(`Lockdown manually lifted by ${interaction.user}.`, 'Manual Lockdown'));
             }
 
             log.info(`${interaction.user.tag} ${action === 'engage' ? 'engaged' : 'lifted'} lockdown in guild ${guild.id}.`);

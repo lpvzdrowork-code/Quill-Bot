@@ -117,14 +117,14 @@ async function triggerRaidResponse(
             await engageLockdown(guild, lockdownMinutes);
         } catch (err) {
             log.error(`Failed to engage lockdown for ${guild.name}:`, err);
-            takenAction = 'alert (lockdown failed — check my Manage Server permission)';
+            takenAction = 'alert (lockdown failed; check my Manage Server permission)';
         }
     }
 
     await sendLog(guild.id, 'staff-logs', Embeds.warn(
-        `🚨 **Raid detected** — ${details}\nAction taken: **${takenAction}**` +
+        `**Raid detected.** ${details}\nAction taken: **${takenAction}**` +
         (action === 'lockdown' && takenAction === action ? `\nVerification level raised for ${lockdownMinutes} minute(s).` : ''),
-        '🚨 Anti-Raid Triggered',
+        'Anti-Raid Triggered',
     ));
 
     await recordIncident(guild.id, 'raid', takenAction, details);
@@ -161,7 +161,7 @@ async function autoRevertLockdown(guild: Guild): Promise<void> {
     try {
         await revertLockdown(guild);
         await sendLog(guild.id, 'staff-logs', Embeds.info(
-            '🔓 Anti-raid lockdown has expired — verification level reverted to its previous setting.',
+            'Anti-raid lockdown has expired. Verification level reverted to its previous setting.',
             'Lockdown Lifted',
         ));
         log.info(`Auto-reverted anti-raid lockdown for ${guild.name}.`);

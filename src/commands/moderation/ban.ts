@@ -83,7 +83,7 @@ const command: BotCommand = {
 
             await interaction.editReply({ embeds: [Embeds.success(
                 `**${target!.user.username}** has been banned.` +
-                (recorded ? '' : '\n⚠️ The ban was applied, but I failed to save it to the mod history.'),
+                (recorded ? '' : '\nThe ban was applied, but it could not be saved to the mod history.'),
             )] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({

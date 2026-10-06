@@ -55,7 +55,7 @@ const command: BotCommand = {
             const pages = chunks.map((chunk, idx) => {
                 const embed = new EmbedBuilder()
                     .setColor(config.colors.warn)
-                    .setTitle(`⚠️ Warnings — ${target.user.username}`)
+                    .setTitle(`Warnings: ${target.user.username}`)
                     .setThumbnail(target.user.displayAvatarURL())
                     .setDescription(`**${warns.length}** warning(s) on record.`)
                     .setFooter({ text: `${config.meta.footer} • Page ${idx + 1} of ${totalPages}` })

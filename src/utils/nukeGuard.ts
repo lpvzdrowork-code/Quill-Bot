@@ -145,8 +145,8 @@ async function triggerNukeResponse(
     }
 
     await sendLog(guild.id, 'staff-logs', Embeds.warn(
-        `🚨 **Possible server nuke detected** — ${details}\nAction taken: **${takenAction}**`,
-        '🚨 Anti-Nuke Triggered',
+        `**Possible server nuke detected.** ${details}\nAction taken: **${takenAction}**`,
+        'Anti-Nuke Triggered',
     ));
 
     await recordIncident(guild.id, 'nuke', takenAction, details, executorId);

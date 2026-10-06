@@ -55,18 +55,18 @@ const command: BotCommand = {
             }, { reason });
 
             const status = locking
-                ? `🔒 ${channel} has been locked.`
-                : `🔓 ${channel} has been unlocked.`;
+                ? `${channel} has been locked.`
+                : `${channel} has been unlocked.`;
 
             await interaction.editReply({ embeds: [Embeds.success(status)] });
 
             // Also send a visible notice in the affected channel
-            // Isolated in its own try-catch so a send failure doesn't overwrite the ✅ reply above
+            // Isolated in its own try-catch so a send failure doesn't overwrite the reply above
             try {
                 await channel.send({ embeds: [
                     locking
-                        ? Embeds.warn(`🔒 This channel has been locked by a moderator.`, 'Channel Locked')
-                        : Embeds.success(`🔓 This channel has been unlocked.`, 'Channel Unlocked'),
+                        ? Embeds.warn('This channel has been locked by a moderator.', 'Channel Locked')
+                        : Embeds.success('This channel has been unlocked.', 'Channel Unlocked'),
                 ]});
             } catch {
                 log.warn(`Could not send lock notice to #${channel.name} — bot may lack Send Messages there.`);
