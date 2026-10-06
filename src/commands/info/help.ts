@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js';
+import { SlashCommandBuilder, EmbedBuilder, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { client } from '../../client.js';
 import { config } from '../../config.js';
@@ -48,7 +48,7 @@ const command: BotCommand = {
             embed.addFields({ name: label, value: lines.sort().join('\n'), inline: false });
         }
 
-        await interaction.reply({ embeds: [embed], ephemeral: true });
+        await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
     },
 };
 

@@ -35,6 +35,27 @@ interface ExecutorState {
 const state = new Map<string, Map<string, ExecutorState>>();
 const PUNISH_COOLDOWN_MS = 5 * 60 * 1000; // don't re-punish the same executor within 5 min of a prior response
 
+// Executors only accumulate state; drop anyone with no activity for an hour so the
+// map doesn't grow forever in a long-running process. (An hour is well past any
+// sane nukeWindowSeconds, so this can never discard timestamps still in a live window.)
+const STALE_AFTER_MS = 60 * 60 * 1000;
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+
+function sweepStale(): void {
+    const now = Date.now();
+
+    for (const [guildId, executors] of state) {
+        for (const [executorId, s] of executors) {
+            const lastActivity = Math.max(s.punishedAt, s.timestamps.at(-1) ?? 0);
+            if (now - lastActivity > STALE_AFTER_MS) executors.delete(executorId);
+        }
+
+        if (executors.size === 0) state.delete(guildId);
+    }
+}
+
+setInterval(sweepStale, SWEEP_INTERVAL_MS).unref();
+
 /** Call on every GuildAuditLogEntryCreate. Filters down to tracked action types internally. */
 export async function handleAuditLogEntryForNukeGuard(entry: GuildAuditLogsEntry, guild: Guild): Promise<void> {
     if (!TRACKED_ACTIONS.has(entry.action)) return;

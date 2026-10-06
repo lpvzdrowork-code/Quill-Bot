@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, PermissionFlagsBits, GuildMember } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits, GuildMember, MessageFlags } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
 import { Embeds } from '../../utils/embeds.js';
 import { sendLog } from '../../utils/channelLogger.js';
@@ -32,7 +32,7 @@ const command: BotCommand = {
         ) as SlashCommandBuilder,
 
     async execute(interaction) {
-        await interaction.deferReply({ ephemeral: true });
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         const target        = interaction.options.getMember('target') as GuildMember | null;
         const reason        = interaction.options.getString('reason') ?? 'No reason provided.';
@@ -62,17 +62,28 @@ const command: BotCommand = {
 
             await target!.ban({ reason, deleteMessageSeconds: deleteSeconds });
 
-            await prisma.ban.create({
-                data: {
-                    guildId:     interaction.guildId!,
-                    userId:      target!.id,
-                    moderatorId: interaction.user.id,
-                    reason,
-                    deleteDays: deleteSeconds > 0 ? deleteSeconds / 86400 : 0,
-                },
-            });
+            // The ban has gone through at this point — a failure saving it must not
+            // be reported to the mod as "the action was not completed".
+            let recorded = true;
+            try {
+                await prisma.ban.create({
+                    data: {
+                        guildId:     interaction.guildId!,
+                        userId:      target!.id,
+                        moderatorId: interaction.user.id,
+                        reason,
+                        deleteDays:  deleteSeconds / 86400,
+                    },
+                });
+            } catch (dbErr) {
+                recorded = false;
+                log.error('Ban succeeded but could not be saved to the database:', dbErr);
+            }
 
-            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been banned.`)] });
+            await interaction.editReply({ embeds: [Embeds.success(
+                `**${target!.user.username}** has been banned.` +
+                (recorded ? '' : '\n⚠️ The ban was applied, but I failed to save it to the mod history.'),
+            )] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Ban',

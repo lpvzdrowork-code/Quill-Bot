@@ -66,10 +66,20 @@ export async function loadEvents(client: Client): Promise<void> {
                 continue;
             }
 
+            // Every handler runs inside a try/catch so one throwing event can never
+            // become an unhandled rejection.
+            const run = async (...args: unknown[]): Promise<void> => {
+                try {
+                    await event.execute(...args);
+                } catch (err) {
+                    log.error(`Unhandled error in ${event.name} handler (${file}):`, err);
+                }
+            };
+
             if (event.once) {
-                client.once(event.name, (...args) => void event.execute(...args));
+                client.once(event.name, run);
             } else {
-                client.on(event.name, (...args) => void event.execute(...args));
+                client.on(event.name, run);
             }
 
             log.debug(`Registered event: ${event.name} (${event.once ? 'once' : 'on'}) ← ${file}`);

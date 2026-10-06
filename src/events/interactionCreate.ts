@@ -1,4 +1,4 @@
-import { Events, PermissionFlagsBits } from 'discord.js';
+import { Events, MessageFlags, PermissionFlagsBits } from 'discord.js';
 import type { Interaction } from 'discord.js';
 import type { BotCommand } from '../types/index.js';
 import { client } from '../client.js';
@@ -40,21 +40,30 @@ const event: BotEvent = {
 
         if (!command) {
             log.warn(`No command found for /${interaction.commandName}.`);
-            await interaction.reply({ content: 'Unknown command.', ephemeral: true });
+            await interaction.reply({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
             return;
         }
 
         // A suspended guild is blocked from every command, no exceptions —
         // this is the dashboard's kill switch, so it has to be unconditional.
         if (interaction.guildId) {
-            const { suspended, reason } = await getGuildSuspensionStatus(interaction.guildId);
+            let suspended = false;
+            let reason: string | null = null;
+
+            try {
+                ({ suspended, reason } = await getGuildSuspensionStatus(interaction.guildId));
+            } catch (err) {
+                // Fail open: a transient DB error shouldn't take every command offline
+                // (same trade-off guildConfig.ts makes for config reads).
+                log.error(`Suspension check failed for guild ${interaction.guildId} — allowing command:`, err);
+            }
 
             if (suspended) {
                 await interaction.reply({
                     content: reason
                         ? `❌ This server has been suspended from using Quill.\nReason: ${reason}`
                         : '❌ This server has been suspended from using Quill.',
-                    ephemeral: true,
+                    flags: MessageFlags.Ephemeral,
                 });
                 return;
             }
@@ -67,7 +76,7 @@ const event: BotEvent = {
                     `You need the following permission(s) to use \`/${interaction.commandName}\`:\n${missingPermissions.map(p => `• **${p}**`).join('\n')}`,
                     'Insufficient Permissions',
                 )],
-                ephemeral: true,
+                flags: MessageFlags.Ephemeral,
             });
             return;
         }
@@ -76,7 +85,7 @@ const event: BotEvent = {
         if (remainingCooldown !== null) {
             await interaction.reply({
                 content:   `⏳ Please wait **${remainingCooldown}s** before using \`/${interaction.commandName}\` again.`,
-                ephemeral: true,
+                flags:     MessageFlags.Ephemeral,
             });
             return;
         }
@@ -97,7 +106,7 @@ const event: BotEvent = {
 
                 await interaction.reply({
                     content:   `❌ Commands aren't allowed in this channel. Try: ${channelList}`,
-                    ephemeral: true,
+                    flags:     MessageFlags.Ephemeral,
                 });
                 return;
             }
@@ -109,12 +118,18 @@ const event: BotEvent = {
         } catch (err) {
             log.error(`Error executing /${interaction.commandName}:`, err);
 
-            const message = { content: 'Something went wrong while running that command.', ephemeral: true };
+            const message = { content: 'Something went wrong while running that command.', flags: MessageFlags.Ephemeral } as const;
 
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp(message);
-            } else {
-                await interaction.reply(message);
+            // The interaction may have already expired (3s ack window) — a failed
+            // reply here must not throw out of the handler.
+            try {
+                if (interaction.replied || interaction.deferred) {
+                    await interaction.followUp(message);
+                } else {
+                    await interaction.reply(message);
+                }
+            } catch (replyErr) {
+                log.warn(`Could not send error reply for /${interaction.commandName}:`, replyErr);
             }
 
             if (interaction.guildId) {

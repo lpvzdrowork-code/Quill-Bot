@@ -1,4 +1,5 @@
 import type { ModalSubmitInteraction, TextChannel } from 'discord.js';
+import { MessageFlags } from 'discord.js';
 import { Embeds } from './embeds.js';
 import { resolveEmbedColor } from './embedColors.js';
 import { createLogger } from './logger.js';
@@ -28,7 +29,7 @@ export async function handleEmbedModal(interaction: ModalSubmitInteraction): Pro
 async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]): Promise<void> {
     const [channelId, colorKey] = parts;
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const title       = interaction.fields.getTextInputValue('title').trim();
     const description = interaction.fields.getTextInputValue('description').trim();
@@ -64,7 +65,7 @@ async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]
 async function handleEdit(interaction: ModalSubmitInteraction, parts: string[]): Promise<void> {
     const [channelId, messageId, colorKey] = parts;
 
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const title       = interaction.fields.getTextInputValue('title').trim();
     const description = interaction.fields.getTextInputValue('description').trim();

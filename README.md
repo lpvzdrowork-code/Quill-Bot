@@ -75,24 +75,27 @@ Copy the template below into a `.env` file at the project root:
 ```env
 DISCORD_TOKEN=
 CLIENT_ID=
-GUILD_ID=
-MOD_LOG_CHANNEL=
-BOT_LOG_CHANNEL=
-MEMBER_LOG_CHANNEL=
 DATABASE_URL=
 LOG_LEVEL=INFO
+
+# Optional — legacy fallback log channels. Only used for servers that haven't
+# run /setup logging yet; per-server channels configured via /setup always win.
+STAFF_LOG_CHANNEL=
+MEMBER_LOG_CHANNEL=
+BOT_LOG_CHANNEL=
 ```
 
 | Variable | Description |
 |---|---|
-| `DISCORD_TOKEN` | Bot token from the Discord Developer Portal |
-| `CLIENT_ID` | Application ID from the Developer Portal |
-| `GUILD_ID` | Your server's ID (used for guild-scoped command deployment) |
-| `MOD_LOG_CHANNEL` | Channel ID for moderation action logs |
-| `BOT_LOG_CHANNEL` | Channel ID for bot errors and events |
-| `MEMBER_LOG_CHANNEL` | Channel ID for member join/leave logs |
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DISCORD_TOKEN` | Bot token from the Discord Developer Portal (required) |
+| `CLIENT_ID` | Application ID from the Developer Portal (required for `npm run deploy`) |
+| `DATABASE_URL` | PostgreSQL connection string (required) |
 | `LOG_LEVEL` | Console log verbosity: `DEBUG`, `INFO`, `WARN`, or `ERROR` (default: `INFO`) |
+| `STAFF_LOG_CHANNEL` | Optional legacy fallback for moderation action logs (see `/setup`) |
+| `MEMBER_LOG_CHANNEL` | Optional legacy fallback for member join/leave logs (see `/setup`) |
+| `BOT_LOG_CHANNEL` | Optional legacy fallback for bot error/event logs (see `/setup`) |
+
+Commands are always deployed globally (see `src/deploy.ts`), so no guild ID is needed.
 
 ### 3. Run database migrations
 

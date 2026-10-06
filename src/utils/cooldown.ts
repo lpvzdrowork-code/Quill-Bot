@@ -26,6 +26,25 @@ const COMMAND_COOLDOWNS_MS: Record<string, number> = {
 // commandName -> (userId -> last-used timestamp)
 const timestamps = new Collection<string, Collection<string, number>>();
 
+// Entries only matter until their cooldown elapses, so drop expired ones
+// periodically — otherwise the map grows by one entry per user per command forever.
+const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+
+function sweepExpired(now: number = Date.now()): void {
+    for (const [commandName, users] of timestamps) {
+        const cooldownMs = COMMAND_COOLDOWNS_MS[commandName] ?? DEFAULT_COOLDOWN_MS;
+
+        for (const [userId, lastUsed] of users) {
+            if (now - lastUsed >= cooldownMs) users.delete(userId);
+        }
+
+        if (users.size === 0) timestamps.delete(commandName);
+    }
+}
+
+// unref() so this timer never keeps the process (or a test run) alive on its own.
+setInterval(sweepExpired, SWEEP_INTERVAL_MS).unref();
+
 /**
  * Checks whether `userId` is currently on cooldown for `commandName`.
  *
