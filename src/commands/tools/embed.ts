@@ -32,8 +32,10 @@ const log = createLogger('Embed');
 // (see utils/embedPresets.ts) is a finished embed, so it skips the modal and
 // posts immediately.
 //
-// `interactive` attaches the Apply button (custom ID open_application_modal).
-// Presets decide their own default; an explicit true/false always wins.
+// `interactive` attaches the Apply button (custom ID open_application_modal),
+// which opens a private ticket channel. Presets that set `requiresButton`
+// (careers) always carry it, even if `interactive: false` is passed, so a
+// recruitment panel can never be posted without its Apply button.
 //
 // Color is restricted to the brand
 // palette (see embedColors.ts) rather than a free hex field, on purpose.
@@ -64,7 +66,7 @@ const command: BotCommand = {
             )
             .addBooleanOption(option => option
                 .setName('interactive')
-                .setDescription('Attach an Apply button to the embed.')
+                .setDescription('Attach an Apply button. Always on for the careers type.')
             )
             .addStringOption(option => option
                 .setName('type')
@@ -120,7 +122,7 @@ const command: BotCommand = {
                         footer:      preset.footer,
                     });
 
-                    const attachButton = interactive ?? preset.interactiveByDefault;
+                    const attachButton = preset.requiresButton || interactive === true;
 
                     await channel.send({
                         embeds:     [embed],

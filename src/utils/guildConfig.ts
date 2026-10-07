@@ -26,7 +26,7 @@ export function isLogCategory(value: string): value is LogCategory {
     return (LOG_CATEGORIES as readonly string[]).includes(value);
 }
 
-export const ROLE_TYPES = ['timeout', 'blacklist', 'flag'] as const;
+export const ROLE_TYPES = ['timeout', 'blacklist', 'flag', 'applications'] as const;
 export type RoleType = typeof ROLE_TYPES[number];
 
 export function isRoleType(value: string): value is RoleType {
@@ -164,7 +164,9 @@ export async function removeCommandChannel(guildId: string, channelId: string): 
 }
 
 // ─── Guild Roles ───────────────────────────────────────────────────────────────────
-// Per-guild role IDs (timeout/blacklist/flag), configured via /setup role.
+// Per-guild role IDs (timeout/blacklist/flag/applications), configured via
+// /setup role. 'applications' is the staff role that can see and close
+// application tickets (see utils/applications.ts).
 // Replaces the old shared TIMEOUT_ROLE/BLACKLIST_ROLE/FLAG_ROLE env vars,
 // which pointed at role IDs from a single guild and silently broke or
 // hard-failed those commands in any other server Quill joined.

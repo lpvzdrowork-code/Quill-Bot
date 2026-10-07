@@ -1,4 +1,4 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
+export { APPLICATION_BUTTON_ID, buildApplyRow } from './applications.js';
 
 // ─── Embed Presets & Interactive Components ───────────────────────────────────
 // Backs the `type` and `interactive` options on /embed create.
@@ -8,24 +8,9 @@ import { ActionRowBuilder, ButtonBuilder, ButtonStyle } from 'discord.js';
 // preset, edit it here — nothing else in the bot needs to know.
 
 // ─── Application Button ───────────────────────────────────────────────────────
-// This ID is a stable string, not a per-message one. interactionCreate.ts
-// routes on it globally, so the button keeps working after a bot restart and
-// on every message it was ever attached to (no collectors involved).
-
-export const APPLICATION_BUTTON_ID = 'open_application_modal';
-
-/** The single-button action row attached to interactive embeds. */
-export function buildApplyRow(): ActionRowBuilder<ButtonBuilder> {
-    return new ActionRowBuilder<ButtonBuilder>().addComponents(
-        new ButtonBuilder()
-            .setCustomId(APPLICATION_BUTTON_ID)
-            .setLabel('Apply')
-            .setEmoji('📨')
-            // Secondary (grey) sits on the Graphite embed without competing
-            // with it. Swap to ButtonStyle.Primary for a Blurple button.
-            .setStyle(ButtonStyle.Secondary),
-    );
-}
+// The button and its custom ID (open_application_modal) live in
+// applications.ts, next to the handler that answers the click, so the two can
+// never drift apart. They are re-exported above for the embed code.
 
 // ─── Preset Registry ──────────────────────────────────────────────────────────
 
@@ -39,8 +24,8 @@ export interface EmbedPreset {
     title:       string;
     description: string;
     footer:      string;
-    /** Whether the Apply button is attached when `interactive` isn't specified. */
-    interactiveByDefault: boolean;
+    /** Always attach the Apply button, overriding an explicit `interactive: false`. */
+    requiresButton: boolean;
 }
 
 export const EMBED_PRESETS: Record<EmbedPresetKey, EmbedPreset> = {
@@ -59,6 +44,6 @@ export const EMBED_PRESETS: Record<EmbedPresetKey, EmbedPreset> = {
             'Have examples of your work ready, along with your availability and the areas you would like to contribute to.',
         ].join('\n'),
         footer: 'Lpvzdro Industries™',
-        interactiveByDefault: true,
+        requiresButton: true,
     },
 };

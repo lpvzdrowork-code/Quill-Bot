@@ -116,7 +116,7 @@ const command: BotCommand = {
 
         .addSubcommand(sub => sub
             .setName('role')
-            .setDescription('Map a functional role slot (timeout/blacklist/flag) to a role.')
+            .setDescription('Map a functional role slot (timeout/blacklist/flag/applications) to a role.')
             .addStringOption(option => option
                 .setName('type')
                 .setDescription('Which role slot to configure.')

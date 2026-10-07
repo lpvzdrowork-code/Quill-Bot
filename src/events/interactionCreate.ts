@@ -10,8 +10,7 @@ import { getGuildSuspensionStatus } from '../utils/guildSuspension.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { Embeds } from '../utils/embeds.js';
 import { handleEmbedModal } from '../utils/embedModals.js';
-import { APPLICATION_BUTTON_ID } from '../utils/embedPresets.js';
-import { handleApplicationButton } from '../utils/applications.js';
+import { APPLICATION_BUTTON_ID, APPLICATION_CLOSE_ID, handleApplicationButton, handleApplicationClose } from '../utils/applications.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -39,12 +38,14 @@ const event: BotEvent = {
         // Button clicks route on a stable customId rather than a collector, so
         // buttons on old messages keep working across bot restarts.
         if (interaction.isButton()) {
-            if (interaction.customId === APPLICATION_BUTTON_ID) {
-                try {
+            try {
+                if (interaction.customId === APPLICATION_BUTTON_ID) {
                     await handleApplicationButton(interaction);
-                } catch (err) {
-                    log.error('Application button handler failed:', err);
+                } else if (interaction.customId === APPLICATION_CLOSE_ID) {
+                    await handleApplicationClose(interaction);
                 }
+            } catch (err) {
+                log.error(`Button handler failed for '${interaction.customId}':`, err);
             }
             return;
         }
