@@ -29,6 +29,18 @@ export function isLogCategory(value: string): value is LogCategory {
 export const ROLE_TYPES = ['timeout', 'blacklist', 'flag', 'applications'] as const;
 export type RoleType = typeof ROLE_TYPES[number];
 
+/**
+ * Slots that can hold several roles. Every other slot is a single role that
+ * Quill assigns to a member (timeout/blacklist/flag), so setting it replaces
+ * the previous one. 'applications' is the set of staff roles that can see and
+ * close application tickets, where any number of roles makes sense.
+ */
+export const MULTI_ROLE_TYPES: readonly RoleType[] = ['applications'];
+
+export function isMultiRoleType(roleType: RoleType): boolean {
+    return MULTI_ROLE_TYPES.includes(roleType);
+}
+
 export function isRoleType(value: string): value is RoleType {
     return (ROLE_TYPES as readonly string[]).includes(value);
 }
@@ -36,7 +48,7 @@ export function isRoleType(value: string): value is RoleType {
 interface CachedGuildConfig {
     logChannels: Map<string, { channelId: string; enabled: boolean }>;
     commandChannelIds: Set<string>;
-    roles: Map<string, string>;
+    roles: Map<string, string[]>;
     fetchedAt: number;
 }
 
@@ -47,13 +59,20 @@ async function loadGuildConfig(guildId: string): Promise<CachedGuildConfig> {
     const [logChannels, commandChannels, guildRoles] = await Promise.all([
         prisma.logChannel.findMany({ where: { guildId } }),
         prisma.commandChannel.findMany({ where: { guildId } }),
-        prisma.guildRole.findMany({ where: { guildId } }),
+        prisma.guildRole.findMany({ where: { guildId }, orderBy: { createdAt: 'asc' } }),
     ]);
+
+    const roles = new Map<string, string[]>();
+    for (const { roleType, roleId } of guildRoles) {
+        const list = roles.get(roleType);
+        if (list) list.push(roleId);
+        else roles.set(roleType, [roleId]);
+    }
 
     const fresh: CachedGuildConfig = {
         logChannels: new Map(logChannels.map(lc => [lc.category, { channelId: lc.channelId, enabled: lc.enabled }])),
         commandChannelIds: new Set(commandChannels.map(cc => cc.channelId)),
-        roles: new Map(guildRoles.map(r => [r.roleType, r.roleId])),
+        roles,
         fetchedAt: Date.now(),
     };
 
@@ -171,32 +190,53 @@ export async function removeCommandChannel(guildId: string, channelId: string): 
 // which pointed at role IDs from a single guild and silently broke or
 // hard-failed those commands in any other server Quill joined.
 
+/** The configured role for a slot (the first one, for slots that hold several), or null. */
 export async function getRoleId(guildId: string, roleType: RoleType): Promise<string | null> {
     const cfg = await getGuildConfig(guildId);
-    return cfg.roles.get(roleType) ?? null;
+    return cfg.roles.get(roleType)?.[0] ?? null;
 }
 
-/** Full snapshot of every role slot's mapping, for /setup config view. */
-export async function getAllRoles(guildId: string): Promise<Record<RoleType, string | null>> {
+/** Every role configured for a slot, oldest first. Empty when none is set. */
+export async function getRoleIds(guildId: string, roleType: RoleType): Promise<string[]> {
     const cfg = await getGuildConfig(guildId);
-    const result = {} as Record<RoleType, string | null>;
+    return [...(cfg.roles.get(roleType) ?? [])];
+}
+
+/** Full snapshot of every role slot's mappings, for /setup config view. */
+export async function getAllRoles(guildId: string): Promise<Record<RoleType, string[]>> {
+    const cfg = await getGuildConfig(guildId);
+    const result = {} as Record<RoleType, string[]>;
     for (const roleType of ROLE_TYPES) {
-        result[roleType] = cfg.roles.get(roleType) ?? null;
+        result[roleType] = [...(cfg.roles.get(roleType) ?? [])];
     }
     return result;
 }
 
+/**
+ * Single-role slots: replaces whatever was set. Multi-role slots (see
+ * MULTI_ROLE_TYPES): adds the role, and adding one that is already there is a no-op.
+ */
 export async function setRole(guildId: string, roleType: RoleType, roleId: string): Promise<void> {
-    await prisma.guildRole.upsert({
-        where:  { guildId_roleType: { guildId, roleType } },
-        create: { guildId, roleType, roleId },
-        update: { roleId },
-    });
+    if (isMultiRoleType(roleType)) {
+        await prisma.guildRole.upsert({
+            where:  { guildId_roleType_roleId: { guildId, roleType, roleId } },
+            create: { guildId, roleType, roleId },
+            update: {},
+        });
+    } else {
+        await prisma.$transaction([
+            prisma.guildRole.deleteMany({ where: { guildId, roleType } }),
+            prisma.guildRole.create({ data: { guildId, roleType, roleId } }),
+        ]);
+    }
     invalidateGuildConfig(guildId);
 }
 
-export async function removeRole(guildId: string, roleType: RoleType): Promise<boolean> {
-    const { count } = await prisma.guildRole.deleteMany({ where: { guildId, roleType } });
+/** Removes one role from a slot, or every role in it when no roleId is given. */
+export async function removeRole(guildId: string, roleType: RoleType, roleId?: string): Promise<boolean> {
+    const { count } = await prisma.guildRole.deleteMany({
+        where: roleId ? { guildId, roleType, roleId } : { guildId, roleType },
+    });
     if (count > 0) invalidateGuildConfig(guildId);
     return count > 0;
 }

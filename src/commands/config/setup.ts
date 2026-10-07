@@ -15,8 +15,10 @@ import {
     removeCommandChannel,
     ROLE_TYPES,
     isRoleType,
+    isMultiRoleType,
     getAllRoles,
     setRole,
+    removeRole,
 } from '../../utils/guildConfig.js';
 import {
     RAID_ACTIONS,
@@ -127,6 +129,14 @@ const command: BotCommand = {
                 .setName('role')
                 .setDescription('The role Quill should assign for this slot.')
                 .setRequired(true)
+            )
+            .addStringOption(option => option
+                .setName('action')
+                .setDescription('Add the role (default) or remove it. Only the applications slot holds several roles.')
+                .addChoices(
+                    { name: 'add',    value: 'add' },
+                    { name: 'remove', value: 'remove' },
+                )
             )
         )
 
@@ -326,6 +336,7 @@ async function handleRole(interaction: ChatInputCommandInteraction): Promise<voi
 
     const typeInput = interaction.options.getString('type', true);
     const role       = interaction.options.getRole('role', true);
+    const action     = interaction.options.getString('action') ?? 'add';
 
     if (!isRoleType(typeInput)) {
         await interaction.editReply({ embeds: [Embeds.error(`\`${typeInput}\` is not a valid role type.`)] });
@@ -333,9 +344,25 @@ async function handleRole(interaction: ChatInputCommandInteraction): Promise<voi
     }
 
     try {
+        if (action === 'remove') {
+            const removed = await removeRole(interaction.guildId!, typeInput, role.id);
+
+            await interaction.editReply({ embeds: [
+                removed
+                    ? Embeds.success(`<@&${role.id}> was removed from **${typeInput}**.`)
+                    : Embeds.info(`<@&${role.id}> isn't set for **${typeInput}**.`)
+            ]});
+            log.info(`${interaction.user.tag} removed role "${typeInput}" -> ${role.id} in guild ${interaction.guildId}.`);
+            return;
+        }
+
         await setRole(interaction.guildId!, typeInput, role.id);
 
-        await interaction.editReply({ embeds: [Embeds.success(`**${typeInput}** actions will now use the <@&${role.id}> role.`)] });
+        await interaction.editReply({ embeds: [Embeds.success(
+            isMultiRoleType(typeInput)
+                ? `<@&${role.id}> was added to **${typeInput}**. Run this again to add more roles.`
+                : `**${typeInput}** actions will now use the <@&${role.id}> role.`
+        )] });
         log.info(`${interaction.user.tag} mapped role "${typeInput}" -> ${role.id} in guild ${interaction.guildId}.`);
 
     } catch (err) {
@@ -497,7 +524,7 @@ async function handleConfigView(interaction: ChatInputCommandInteraction): Promi
             .addFields(
                 { name: 'Log Channels',     value: loggingLines.join('\n'), inline: false },
                 { name: 'Command Channels', value: commandChannelValue,     inline: false },
-                { name: 'Roles',            value: ROLE_TYPES.map(type => roles[type] ? `**${type}**: <@&${roles[type]}>` : `**${type}**: not configured`).join('\n'), inline: false },
+                { name: 'Roles',            value: ROLE_TYPES.map(type => roles[type].length > 0 ? `**${type}**: ${roles[type].map(id => `<@&${id}>`).join(' ')}` : `**${type}**: not configured`).join('\n'), inline: false },
                 {
                     name:   'Anti-Raid',
                     value:  `Status: **${security.antiRaidEnabled ? 'Enabled' : 'Disabled'}**\n` +

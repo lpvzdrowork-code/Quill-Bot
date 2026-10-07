@@ -176,8 +176,11 @@ model CommandChannel {
 }
 
 // ─── GuildRole ────────────────────────────────────────────────
-// Maps a functional role slot ("timeout", "blacklist", "flag") to an actual
-// role ID for a guild. Replaces the old hardcoded TIMEOUT_ROLE / BLACKLIST_ROLE
+// Maps a functional role slot ("timeout", "blacklist", "flag", "applications")
+// to role IDs for a guild. Most slots hold one role; "applications" can hold
+// several (see MULTI_ROLE_TYPES in src/utils/guildConfig.ts), which is why the
+// unique key includes roleId. Replaces the old hardcoded TIMEOUT_ROLE /
+// BLACKLIST_ROLE
 // / FLAG_ROLE env vars, which were a single set of role IDs shared across every
 // server Quill was in — meaning /blacklist, /timeout, and /flag could only
 // ever work correctly in the one guild those IDs actually belonged to.
@@ -191,7 +194,7 @@ model GuildRole {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([guildId, roleType])
+  @@unique([guildId, roleType, roleId])
   @@index([guildId])
 }
 

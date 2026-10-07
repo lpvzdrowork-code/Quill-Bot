@@ -7,12 +7,12 @@ import {
     OverwriteType,
     PermissionFlagsBits,
 } from 'discord.js';
-import type { ButtonInteraction, Guild, TextChannel } from 'discord.js';
+import type { ButtonInteraction, Guild, Role, TextChannel } from 'discord.js';
 import { config } from '../config.js';
 import { Embeds } from './embeds.js';
 import { resolveEmbedColor } from './embedColors.js';
 import { sendLog } from './channelLogger.js';
-import { getRoleId } from './guildConfig.js';
+import { getRoleIds } from './guildConfig.js';
 import { getGuildSuspensionStatus } from './guildSuspension.js';
 import { createLogger } from './logger.js';
 
@@ -38,6 +38,15 @@ export const APPLICATION_CLOSE_ID  = 'application_close';
 
 const TOPIC_PREFIX = 'Application ticket | applicant:';
 const CLOSE_DELAY_MS = 5_000;
+
+// What the applicant and every staff role can do inside a ticket.
+const TICKET_PERMISSIONS = [
+    PermissionFlagsBits.ViewChannel,
+    PermissionFlagsBits.SendMessages,
+    PermissionFlagsBits.ReadMessageHistory,
+    PermissionFlagsBits.AttachFiles,
+    PermissionFlagsBits.EmbedLinks,
+];
 
 // Applicants whose ticket is mid-creation. Stops a double-click from opening
 // two channels before the first one exists to be found.
@@ -99,13 +108,15 @@ async function findOpenTicket(guild: Guild, userId: string): Promise<TextChannel
     return (match as TextChannel | undefined) ?? null;
 }
 
-function isStaff(interaction: ButtonInteraction, staffRoleId: string | null): boolean {
+function isStaff(interaction: ButtonInteraction, staffRoleIds: string[]): boolean {
     if (interaction.memberPermissions?.has(PermissionFlagsBits.ManageChannels)) return true;
 
     const roles = interaction.member?.roles;
-    if (!staffRoleId || !roles) return false;
+    if (staffRoleIds.length === 0 || !roles) return false;
 
-    return Array.isArray(roles) ? roles.includes(staffRoleId) : roles.cache.has(staffRoleId);
+    return Array.isArray(roles)
+        ? staffRoleIds.some(id => roles.includes(id))
+        : staffRoleIds.some(id => roles.cache.has(id));
 }
 
 // ─── Apply Click ──────────────────────────────────────────────────────────────
@@ -123,13 +134,15 @@ export async function handleApplicationButton(interaction: ButtonInteraction): P
         return;
     }
 
-    // The staff role is what lets anyone other than the applicant see the
-    // ticket. Without it the interview would have no interviewer, so applying
-    // is refused rather than opening a channel nobody can answer.
-    const staffRoleId = await getRoleId(guild.id, 'applications');
-    const staffRole   = staffRoleId ? await guild.roles.fetch(staffRoleId).catch(() => null) : null;
+    // The staff roles are what let anyone other than the applicant see the
+    // ticket. Without any, the interview would have no interviewer, so applying
+    // is refused rather than opening a channel nobody can answer. Roles deleted
+    // since setup are skipped.
+    const configured = await getRoleIds(guild.id, 'applications');
+    const fetched    = await Promise.all(configured.map(id => guild.roles.fetch(id).catch(() => null)));
+    const staffRoles = fetched.filter((role): role is Role => role !== null);
 
-    if (!staffRoleId || !staffRole) {
+    if (staffRoles.length === 0) {
         await interaction.editReply({ embeds: [Embeds.error('Applications are not being accepted right now. Please try again later.')] });
         log.warn(`Apply clicked in guild ${guild.id} but no valid 'applications' role is configured. Run /setup role applications.`);
         return;
@@ -176,17 +189,11 @@ export async function handleApplicationButton(interaction: ButtonInteraction): P
                         PermissionFlagsBits.EmbedLinks,
                     ],
                 },
-                {
-                    id:    staffRoleId,
+                ...staffRoles.map(role => ({
+                    id:    role.id,
                     type:  OverwriteType.Role,
-                    allow: [
-                        PermissionFlagsBits.ViewChannel,
-                        PermissionFlagsBits.SendMessages,
-                        PermissionFlagsBits.ReadMessageHistory,
-                        PermissionFlagsBits.AttachFiles,
-                        PermissionFlagsBits.EmbedLinks,
-                    ],
-                },
+                    allow: TICKET_PERMISSIONS,
+                })),
                 {
                     id:    interaction.client.user.id,
                     type:  OverwriteType.Member,
@@ -218,10 +225,10 @@ export async function handleApplicationButton(interaction: ButtonInteraction): P
         });
 
         await channel.send({
-            content:         `${user} <@&${staffRoleId}>`,
+            content:         `${user} ${staffRoles.map(role => `<@&${role.id}>`).join(' ')}`,
             embeds:          [welcome],
             components:      [buildCloseRow()],
-            allowedMentions: { users: [user.id], roles: [staffRoleId] },
+            allowedMentions: { users: [user.id], roles: staffRoles.map(role => role.id) },
         });
 
         await interaction.editReply({ embeds: [Embeds.success(`Your application channel is ready: ${channel}`)] });
@@ -252,8 +259,8 @@ export async function handleApplicationClose(interaction: ButtonInteraction): Pr
         return;
     }
 
-    const staffRoleId = await getRoleId(guild.id, 'applications');
-    if (!isStaff(interaction, staffRoleId)) {
+    const staffRoleIds = await getRoleIds(guild.id, 'applications');
+    if (!isStaff(interaction, staffRoleIds)) {
         await interaction.reply({ embeds: [Embeds.error('Only staff can close an application.')], flags: MessageFlags.Ephemeral });
         return;
     }
