@@ -11,7 +11,9 @@ import {
 } from 'discord.js';
 import type { TextChannel, Embed } from 'discord.js';
 import type { BotCommand } from '../../types/index.js';
-import { EMBED_COLOR_CHOICES } from '../../utils/embedColors.js';
+import { EMBED_COLOR_CHOICES, resolveEmbedColor } from '../../utils/embedColors.js';
+import { EMBED_PRESETS, EMBED_TYPE_CHOICES, buildApplyRow } from '../../utils/embedPresets.js';
+import type { EmbedPresetKey } from '../../utils/embedPresets.js';
 import { Embeds } from '../../utils/embeds.js';
 import { createLogger } from '../../utils/logger.js';
 
@@ -20,12 +22,20 @@ const log = createLogger('Embed');
 // ─── /embed ───────────────────────────────────────────────────────────────────
 // Minimalist announcement/embed builder for staff. Two subcommands:
 //
-//   /embed create <color> [channel]      — post a new branded embed
+//   /embed create [color] [channel] [interactive] [type]
+//                                        — post a new branded embed
 //   /embed edit <message> [color]        — edit one Quill already sent
 //
-// Text content (title/description/footer/image) always comes through a modal,
-// not slash-command options — that's the only way to get real multi-line
-// descriptions out of the Discord UI. Color is restricted to the brand
+// Text content (title/description/footer/image) comes through a modal, not
+// slash-command options — that's the only way to get real multi-line
+// descriptions out of the Discord UI. The exception is `type`: a preset
+// (see utils/embedPresets.ts) is a finished embed, so it skips the modal and
+// posts immediately.
+//
+// `interactive` attaches the Apply button (custom ID open_application_modal).
+// Presets decide their own default; an explicit true/false always wins.
+//
+// Color is restricted to the brand
 // palette (see embedColors.ts) rather than a free hex field, on purpose.
 // The submit side lives in utils/embedModals.ts and is routed from
 // interactionCreate.ts, since a modal submission isn't a ChatInputCommand.
@@ -52,6 +62,15 @@ const command: BotCommand = {
                 .setDescription('Where to post. Defaults to this channel.')
                 .addChannelTypes(...ANNOUNCEABLE_TYPES)
             )
+            .addBooleanOption(option => option
+                .setName('interactive')
+                .setDescription('Attach an Apply button to the embed.')
+            )
+            .addStringOption(option => option
+                .setName('type')
+                .setDescription('Post a ready-made template instead of composing one.')
+                .addChoices(...EMBED_TYPE_CHOICES)
+            )
         )
 
         .addSubcommand(sub => sub
@@ -73,16 +92,55 @@ const command: BotCommand = {
         const sub = interaction.options.getSubcommand(true);
 
         if (sub === 'create') {
-            const color   = interaction.options.getString('color') ?? 'graphite';
-            const channel = (interaction.options.getChannel('channel') as TextChannel | null) ?? interaction.channel as TextChannel;
+            const color       = interaction.options.getString('color') ?? 'graphite';
+            const channel     = (interaction.options.getChannel('channel') as TextChannel | null) ?? interaction.channel as TextChannel;
+            const type        = interaction.options.getString('type') as EmbedPresetKey | null;
+            const interactive = interaction.options.getBoolean('interactive');
 
             if (!channel || !channel.isTextBased()) {
                 await interaction.reply({ embeds: [Embeds.error('Pick a text channel to post in.')], flags: MessageFlags.Ephemeral });
                 return;
             }
 
+            // ── Preset path: no modal, post straight to the channel ───────────
+            if (type) {
+                const preset = EMBED_PRESETS[type];
+                if (!preset) {
+                    await interaction.reply({ embeds: [Embeds.error('Unknown embed type.')], flags: MessageFlags.Ephemeral });
+                    return;
+                }
+
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
+                try {
+                    const embed = Embeds.custom({
+                        color:       resolveEmbedColor(color),
+                        title:       preset.title,
+                        description: preset.description,
+                        footer:      preset.footer,
+                    });
+
+                    const attachButton = interactive ?? preset.interactiveByDefault;
+
+                    await channel.send({
+                        embeds:     [embed],
+                        components: attachButton ? [buildApplyRow()] : [],
+                    });
+
+                    await interaction.editReply({ embeds: [Embeds.success(`Posted the ${type} embed to <#${channel.id}>.`)] });
+                    log.info(`${interaction.user.tag} posted the '${type}' preset to #${channel.id}.`);
+                } catch (err) {
+                    log.error(`Failed to post '${type}' preset:`, err);
+                    const detail = err instanceof Error ? err.message : String(err);
+                    await interaction.editReply({ embeds: [Embeds.error(`Failed to post that embed. Check that I can send messages in <#${channel.id}>.\n\`\`\`${detail.slice(0, 300)}\`\`\``)] });
+                }
+                return;
+            }
+
+            // ── Custom path: compose via modal. The button choice rides along in
+            //    the customId (1/0) since the modal submit is a separate interaction.
             const modal = new ModalBuilder()
-                .setCustomId(`embed_create|${channel.id}|${color}`)
+                .setCustomId(`embed_create|${channel.id}|${color}|${interactive ? '1' : '0'}`)
                 .setTitle('Compose Embed');
 
             modal.addComponents(

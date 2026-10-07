@@ -2,6 +2,7 @@ import type { ModalSubmitInteraction, TextChannel } from 'discord.js';
 import { MessageFlags } from 'discord.js';
 import { Embeds } from './embeds.js';
 import { resolveEmbedColor } from './embedColors.js';
+import { buildApplyRow } from './embedPresets.js';
 import { createLogger } from './logger.js';
 
 const log = createLogger('EmbedModal');
@@ -10,7 +11,7 @@ const log = createLogger('EmbedModal');
 // Routed here from interactionCreate.ts for any modal customId starting with
 // "embed_". Two shapes:
 //
-//   embed_create|<channelId>|<colorKey>
+//   embed_create|<channelId>|<colorKey>|<interactive: "1"|"0">
 //   embed_edit|<channelId>|<messageId>|<colorKey|"keep">
 //
 // Kept separate from commands/tools/embed.ts because a ModalSubmitInteraction
@@ -27,7 +28,7 @@ export async function handleEmbedModal(interaction: ModalSubmitInteraction): Pro
 }
 
 async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]): Promise<void> {
-    const [channelId, colorKey] = parts;
+    const [channelId, colorKey, interactiveFlag] = parts;
 
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
@@ -51,7 +52,13 @@ async function handleCreate(interaction: ModalSubmitInteraction, parts: string[]
             imageUrl:    image || undefined,
         });
 
-        await (channel as TextChannel).send({ embeds: [embed] });
+        // Older modals (opened before this field existed) have no flag -> no button.
+        const interactive = interactiveFlag === '1';
+
+        await (channel as TextChannel).send({
+            embeds:     [embed],
+            components: interactive ? [buildApplyRow()] : [],
+        });
         await interaction.editReply({ embeds: [Embeds.success(`Posted to <#${channelId}>.`)] });
         log.info(`${interaction.user.tag} posted a new embed to #${channelId}.`);
 
