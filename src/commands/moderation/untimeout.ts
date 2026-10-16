@@ -71,12 +71,23 @@ const command: BotCommand = {
                 }
             }
 
-            await prisma.timeout.updateMany({
-                where:  { guildId: interaction.guildId!, userId: target!.id, endedAt: null },
-                data:   { endedAt: new Date() },
-            });
+            // The timeout is already lifted at this point — a failure updating the
+            // history must not be reported as "the action was not completed".
+            let recorded = true;
+            try {
+                await prisma.timeout.updateMany({
+                    where:  { guildId: interaction.guildId!, userId: target!.id, endedAt: null },
+                    data:   { endedAt: new Date() },
+                });
+            } catch (dbErr) {
+                recorded = false;
+                log.error('Timeout removed but the mod history could not be updated:', dbErr);
+            }
 
-            await interaction.editReply({ embeds: [Embeds.success(`Timeout removed from **${target!.user.username}**.`)] });
+            await interaction.editReply({ embeds: [Embeds.success(
+                `Timeout removed from **${target!.user.username}**.` +
+                (recorded ? '' : '\nThe timeout was lifted, but the mod history could not be updated.'),
+            )] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Untimeout',

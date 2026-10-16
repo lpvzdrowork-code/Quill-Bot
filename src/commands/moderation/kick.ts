@@ -55,16 +55,27 @@ const command: BotCommand = {
 
             await target!.kick(reason);
 
-            await prisma.kick.create({
-                data: {
-                    guildId:     interaction.guildId!,
-                    userId:      target!.id,
-                    moderatorId: interaction.user.id,
-                    reason,
-                },
-            });
+            // The kick has gone through at this point — a failure saving it must not
+            // be reported to the mod as "the action was not completed" (same as /ban).
+            let recorded = true;
+            try {
+                await prisma.kick.create({
+                    data: {
+                        guildId:     interaction.guildId!,
+                        userId:      target!.id,
+                        moderatorId: interaction.user.id,
+                        reason,
+                    },
+                });
+            } catch (dbErr) {
+                recorded = false;
+                log.error('Kick succeeded but could not be saved to the database:', dbErr);
+            }
 
-            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been kicked.`)] });
+            await interaction.editReply({ embeds: [Embeds.success(
+                `**${target!.user.username}** has been kicked.` +
+                (recorded ? '' : '\nThe kick was applied, but it could not be saved to the mod history.'),
+            )] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Kick',

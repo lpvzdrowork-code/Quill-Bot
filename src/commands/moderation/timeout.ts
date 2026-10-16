@@ -91,18 +91,29 @@ const command: BotCommand = {
                 }
             }
 
-            await prisma.timeout.create({
-                data: {
-                    guildId:     interaction.guildId!,
-                    userId:      target!.id,
-                    moderatorId: interaction.user.id,
-                    reason,
-                    duration:    durationSecs,
-                    expiresAt,
-                },
-            });
+            // The timeout is already applied at this point — a failure saving it must
+            // not be reported to the mod as "the action was not completed" (same as /ban).
+            let recorded = true;
+            try {
+                await prisma.timeout.create({
+                    data: {
+                        guildId:     interaction.guildId!,
+                        userId:      target!.id,
+                        moderatorId: interaction.user.id,
+                        reason,
+                        duration:    durationSecs,
+                        expiresAt,
+                    },
+                });
+            } catch (dbErr) {
+                recorded = false;
+                log.error('Timeout applied but could not be saved to the database:', dbErr);
+            }
 
-            await interaction.editReply({ embeds: [Embeds.success(`**${target!.user.username}** has been timed out for **${durationKey}**.`)] });
+            await interaction.editReply({ embeds: [Embeds.success(
+                `**${target!.user.username}** has been timed out for **${durationKey}**.` +
+                (recorded ? '' : '\nThe timeout was applied, but it could not be saved to the mod history.'),
+            )] });
 
             await sendLog(interaction.guildId!, 'staff-logs', Embeds.modAction({
                 action:    'Timeout',

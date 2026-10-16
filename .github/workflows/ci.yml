@@ -1,0 +1,44 @@
+name: CI
+
+# Runs the same gate as `npm run up` (typecheck + tests) on every push and pull
+# request, so a broken change is caught even when it never reaches the deploy
+# machine. It deliberately does not deploy anything.
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # src/generated/prisma is gitignored, so the client has to be generated
+      # before the typecheck can resolve its types. prisma.config.ts reads
+      # DATABASE_URL, but generating the client never connects to a database,
+      # so a placeholder is enough.
+      - name: Generate Prisma client
+        run: npx prisma generate
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
