@@ -39,7 +39,7 @@ describe('validateModerationTarget', () => {
             actionLabel: 'ban',
         });
 
-        expect(result).toBe('❌ That user could not be found in this server.');
+        expect(result).toBe('That user could not be found in this server.');
     });
 
     it('rejects when the bot lacks the required capability', () => {
@@ -72,7 +72,7 @@ describe('validateModerationTarget', () => {
             actionLabel: 'warn',
         });
 
-        expect(result).toBe('❌ You cannot warn yourself.');
+        expect(result).toBe('You cannot warn yourself.');
     });
 
     it('rejects targeting a bot account', () => {
@@ -82,7 +82,7 @@ describe('validateModerationTarget', () => {
             actionLabel: 'kick',
         });
 
-        expect(result).toBe('❌ You cannot kick a bot.');
+        expect(result).toBe('You cannot kick a bot.');
     });
 
     it('protects the server owner when protectOwnerAndAdmins is set', () => {
@@ -93,7 +93,7 @@ describe('validateModerationTarget', () => {
             protectOwnerAndAdmins: true,
         });
 
-        expect(result).toBe('❌ You cannot flag the server owner.');
+        expect(result).toBe('You cannot flag the server owner.');
     });
 
     it('protects administrators when protectOwnerAndAdmins is set', () => {
@@ -104,7 +104,7 @@ describe('validateModerationTarget', () => {
             protectOwnerAndAdmins: true,
         });
 
-        expect(result).toBe('❌ You cannot flag an administrator.');
+        expect(result).toBe('You cannot flag an administrator.');
     });
 
     it('does not apply owner/admin protection unless explicitly requested', () => {
@@ -117,7 +117,7 @@ describe('validateModerationTarget', () => {
 
         // No protectOwnerAndAdmins flag — owner should fall through to the
         // hierarchy check instead of being blocked outright.
-        expect(result).not.toContain('server owner');
+        expect(result ?? '').not.toContain('server owner');
     });
 
     it('rejects targets with an equal or higher role than the invoker', () => {
@@ -127,7 +127,7 @@ describe('validateModerationTarget', () => {
             actionLabel: 'timeout',
         });
 
-        expect(result).toBe('❌ You cannot timeout a member with an equal or higher role than your own.');
+        expect(result).toBe('You cannot timeout a member with an equal or higher role than your own.');
     });
 
     it('returns null for a fully valid target', () => {
