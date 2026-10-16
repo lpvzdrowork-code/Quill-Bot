@@ -18,6 +18,8 @@ const CATEGORY_LABELS: Record<string, string> = {
     general:    'General',
 };
 
+const FIELD_LIMIT = 1024;
+
 const command: BotCommand = {
     data: new SlashCommandBuilder()
         .setName('help')
@@ -45,7 +47,30 @@ const command: BotCommand = {
 
         for (const [category, lines] of sortedCategories) {
             const label = CATEGORY_LABELS[category] ?? category;
-            embed.addFields({ name: label, value: lines.sort().join('\n'), inline: false });
+
+            // Discord caps a field value at 1024 characters, so split large
+            // categories (e.g. Moderation) into continuation fields.
+            const chunks: string[] = [];
+            let current = '';
+
+            for (const line of lines.sort()) {
+                const next = current ? `${current}\n${line}` : line;
+                if (next.length > FIELD_LIMIT && current) {
+                    chunks.push(current);
+                    current = line;
+                } else {
+                    current = next;
+                }
+            }
+            if (current) chunks.push(current);
+
+            chunks.forEach((value, i) => {
+                embed.addFields({
+                    name:   i === 0 ? label : `${label} (cont.)`,
+                    value:  value.slice(0, FIELD_LIMIT),
+                    inline: false,
+                });
+            });
         }
 
         await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
