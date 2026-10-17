@@ -55,10 +55,21 @@ const command: BotCommand = {
         const created = Math.floor(guild.createdTimestamp / 1000);
 
         const channels = [...guild.channels.cache.values()];
-        const channelLines = CHANNEL_KINDS
-            .map(kind => ({ label: kind.label, count: channels.filter(c => kind.types.includes(c.type)).length, always: kind.always }))
+        const kinds = CHANNEL_KINDS.map(kind => ({
+            ...kind,
+            count: channels.filter(c => kind.types.includes(c.type)).length,
+        }));
+
+        const channelLines = kinds
             .filter(kind => kind.always || kind.count > 0)
             .map(kind => `**${kind.label}:** ${kind.count}`);
+
+        // The headline total is the sum of the same per-kind counts shown below it
+        // (minus categories), so the two can never disagree and threads, which
+        // aren't in any kind, are excluded from both.
+        const channelTotal = kinds
+            .filter(kind => !kind.types.includes(ChannelType.GuildCategory))
+            .reduce((sum, kind) => sum + kind.count, 0);
 
         const embed = new EmbedBuilder()
             .setColor(config.colors.info)
@@ -74,7 +85,7 @@ const command: BotCommand = {
                     inline: true,
                 },
                 { name: 'Verification', value: VERIFICATION_LABELS[guild.verificationLevel] ?? 'Unknown', inline: true },
-                { name: `Channels (${channels.filter(c => c.type !== ChannelType.GuildCategory).length})`, value: channelLines.join('  •  '), inline: false },
+                { name: `Channels (${channelTotal})`, value: channelLines.join('  •  '), inline: false },
                 // @everyone is a role in the cache but not one anybody thinks of as a role.
                 { name: 'Roles',        value: String(Math.max(0, guild.roles.cache.size - 1)), inline: true },
                 { name: 'Emojis',       value: String(guild.emojis.cache.size),                  inline: true },

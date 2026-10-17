@@ -210,7 +210,9 @@ describe('/serverinfo', () => {
 
             await run(interaction);
 
-            expect(field(embedOf(interaction), /^Channels/)!.name).toBe('Channels (1)');
+            const channelsField = field(embedOf(interaction), /^Channels/)!;
+            expect(channelsField.name).toBe('Channels (1)');
+            expect(channelsField.value).toBe('**Text:** 1  •  **Voice:** 0  •  **Categories:** 0');
         });
     });
 
