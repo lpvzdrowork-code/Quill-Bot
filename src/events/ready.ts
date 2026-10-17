@@ -2,6 +2,7 @@ import { Events } from 'discord.js';
 import { client } from '../client.js';
 import { logger } from '../utils/logger.js';
 import { prisma } from '../lib/prisma.js';
+import { startPollSweeper } from '../utils/polls.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 // ─── Guild Reconciliation ───────────────────────────────────────────────────
@@ -39,6 +40,7 @@ const event: BotEvent = {
         logger.info(`Quill is online and logged in as ${client.user?.tag}`);
         logger.info(`Serving ${client.guilds.cache.size} guild(s).`);
         await reconcileGuilds();
+        startPollSweeper(client);
     },
 };
 

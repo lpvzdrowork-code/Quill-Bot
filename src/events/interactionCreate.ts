@@ -12,6 +12,7 @@ import { Embeds } from '../utils/embeds.js';
 import { handleEmbedModal } from '../utils/embedModals.js';
 import { handleTagModal } from '../utils/tagModals.js';
 import { APPLICATION_BUTTON_ID, APPLICATION_CLOSE_ID, handleApplicationButton, handleApplicationClose } from '../utils/applications.js';
+import { POLL_BUTTON_PREFIX, handlePollButton } from '../utils/polls.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
 const log = createLogger('InteractionCreate');
@@ -50,6 +51,8 @@ const event: BotEvent = {
                     await handleApplicationButton(interaction);
                 } else if (interaction.customId === APPLICATION_CLOSE_ID) {
                     await handleApplicationClose(interaction);
+                } else if (interaction.customId.startsWith(POLL_BUTTON_PREFIX)) {
+                    await handlePollButton(interaction);
                 }
             } catch (err) {
                 log.error(`Button handler failed for '${interaction.customId}':`, err);

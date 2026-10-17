@@ -44,6 +44,11 @@ vi.mock('../src/utils/applications.js', () => ({
     handleApplicationClose:  vi.fn(),
 }));
 
+vi.mock('../src/utils/polls.js', () => ({
+    POLL_BUTTON_PREFIX: 'poll_',
+    handlePollButton:   vi.fn(),
+}));
+
 import event from '../src/events/interactionCreate.js';
 import { client } from '../src/client.js';
 import { isAllowedCommandChannel, getCommandChannelIds } from '../src/utils/guildConfig.js';
@@ -52,6 +57,7 @@ import { sendLog } from '../src/utils/channelLogger.js';
 import { handleEmbedModal } from '../src/utils/embedModals.js';
 import { handleTagModal } from '../src/utils/tagModals.js';
 import { handleApplicationButton, handleApplicationClose } from '../src/utils/applications.js';
+import { handlePollButton } from '../src/utils/polls.js';
 
 // ─── Test Doubles ─────────────────────────────────────────────────────────────
 
@@ -177,11 +183,35 @@ describe('interactionCreate', () => {
             expect(handleApplicationClose).toHaveBeenCalledWith(close);
         });
 
+        it('routes poll_ buttons to the poll handler', async () => {
+            const vote  = { isModalSubmit: () => false, isButton: () => true, customId: 'poll_vote|abc|1' };
+            const close = { isModalSubmit: () => false, isButton: () => true, customId: 'poll_close|abc' };
+
+            await dispatch(vote);
+            await dispatch(close);
+
+            expect(handlePollButton).toHaveBeenCalledWith(vote);
+            expect(handlePollButton).toHaveBeenCalledWith(close);
+            expect(handlePollButton).toHaveBeenCalledTimes(2);
+            expect(handleApplicationButton).not.toHaveBeenCalled();
+        });
+
+        it('contains a failing poll button handler instead of throwing', async () => {
+            vi.mocked(handlePollButton).mockRejectedValue(new Error('boom'));
+
+            await expect(dispatch({
+                isModalSubmit: () => false,
+                isButton:      () => true,
+                customId:      'poll_vote|abc|0',
+            })).resolves.toBeUndefined();
+        });
+
         it('ignores buttons it does not own', async () => {
             await dispatch({ isModalSubmit: () => false, isButton: () => true, customId: 'help_next' });
 
             expect(handleApplicationButton).not.toHaveBeenCalled();
             expect(handleApplicationClose).not.toHaveBeenCalled();
+            expect(handlePollButton).not.toHaveBeenCalled();
         });
 
         it('contains a failing button handler instead of throwing', async () => {

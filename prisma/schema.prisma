@@ -157,6 +157,46 @@ model Note {
   @@index([guildId, userId])
 }
 
+// ─── Poll ─────────────────────────────────────────────────────────────────────
+// Quick polls posted by /poll. The message carries one button per option; a
+// click is routed by customId (see src/utils/polls.ts), so polls keep working
+// across restarts. A vote stores the index into `options`, not the option text.
+// endsAt = null means the poll stays open until someone ends it by hand.
+// A poll is closed once closedAt is set; the expiry sweep sets it for polls
+// whose endsAt has passed (closedById stays null for those).
+
+model Poll {
+  id         String    @id @default(cuid())
+  guildId    String
+  channelId  String
+  messageId  String?   // set once the poll message has been posted
+  creatorId  String
+  question   String
+  options    String[]  // 2-5 choices, see POLL_MIN/MAX_OPTIONS in src/utils/polls.ts
+  endsAt     DateTime?
+  closedAt   DateTime?
+  closedById String?
+  createdAt  DateTime  @default(now())
+
+  @@index([guildId])
+  @@index([closedAt, endsAt])
+}
+
+// ─── PollVote ─────────────────────────────────────────────────────────────────
+// One row per voter per poll (single choice). The unique key is what enforces
+// that, and also covers the per-poll count query. Votes are never shown by
+// voter: results are counts only.
+
+model PollVote {
+  id          String   @id @default(cuid())
+  pollId      String
+  userId      String
+  optionIndex Int
+  createdAt   DateTime @default(now())
+
+  @@unique([pollId, userId])
+}
+
 // ─── LogChannel ────────────────────────────────────────────────
 // Maps a log category (e.g. "mod-logs", "member-logs", "bot-logs") to a
 // destination channel for a guild. Replaces the old hardcoded
