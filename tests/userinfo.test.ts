@@ -58,7 +58,7 @@ function makeMember(overrides: Record<string, unknown> = {}) {
         joinedTimestamp:                Date.now() - 100 * DAY,
         nickname:                       null,
         premiumSinceTimestamp:          null,
-        communicationDisabledTimestamp: null,
+        communicationDisabledUntilTimestamp: null,
         isCommunicationDisabled:        () => false,
         ...overrides,
         roles: { cache: new Map(entries) },
@@ -314,8 +314,8 @@ describe('/userinfo', () => {
             const interaction = makeInteraction({
                 target: makeUser(),
                 member: makeMember({
-                    isCommunicationDisabled:        () => true,
-                    communicationDisabledTimestamp: Date.now() + DAY,
+                    isCommunicationDisabled:             () => true,
+                    communicationDisabledUntilTimestamp: Date.now() + DAY,
                 }),
             });
 

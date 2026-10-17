@@ -106,8 +106,8 @@ const command: BotCommand = {
             if (activeBans > 0)       status.push('Banned');
             if (activeBlacklists > 0) status.push('Blacklisted');
             if (activeFlags > 0)      status.push('Flagged for staff watch');
-            if (timedOut && member?.communicationDisabledTimestamp) {
-                status.push(`Timed out, ends <t:${Math.floor(member.communicationDisabledTimestamp / 1000)}:R>`);
+            if (timedOut && member?.communicationDisabledUntilTimestamp) {
+                status.push(`Timed out, ends <t:${Math.floor(member.communicationDisabledUntilTimestamp / 1000)}:R>`);
             }
 
             const color =
