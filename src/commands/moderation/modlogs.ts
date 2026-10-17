@@ -5,6 +5,7 @@ import { paginate } from '../../utils/paginator.js';
 import { Embeds } from '../../utils/embeds.js';
 import { createLogger } from '../../utils/logger.js';
 import { config } from '../../config.js';
+import { NOTES_PER_PAGE } from '../../utils/notes.js';
 
 const log = createLogger('Modlogs');
 
@@ -36,7 +37,7 @@ const command: BotCommand = {
         const userId  = target.id;
 
         try {
-            const [bans, kicks, timeouts, warns, blacklists, flags] = await Promise.all([
+            const [bans, kicks, timeouts, warns, blacklists, flags, notes] = await Promise.all([
                 prisma.ban.findMany({
                     where:   { guildId, userId },
                     orderBy: { createdAt: 'desc' },
@@ -61,12 +62,19 @@ const command: BotCommand = {
                     where:   { guildId, userId },
                     orderBy: { createdAt: 'desc' },
                 }),
+                prisma.note.findMany({
+                    where:   { guildId, userId },
+                    orderBy: { createdAt: 'desc' },
+                }),
             ]);
 
             const total = bans.length + kicks.length + timeouts.length + warns.length
                         + blacklists.length + flags.length;
 
-            if (total === 0) {
+            // Notes are context, not enforcement: they stay out of `total` (the
+            // "actions on record" count) but a user with only notes should still
+            // get their history instead of "no moderation history".
+            if (total === 0 && notes.length === 0) {
                 await interaction.editReply({ embeds: [Embeds.success(`**${target.user.username}** has no moderation history.`)] });
                 return;
             }
@@ -146,6 +154,31 @@ const command: BotCommand = {
                         ? `**Status:** Revoked <t:${Math.floor(f.revokedAt.getTime() / 1000)}:R>`
                         : '**Status:** Revoked');
 
+            // Staff notes get dedicated pages rather than going through addPages():
+            // that helper hardcodes "Reason"/"Moderator" labels, which don't fit a
+            // note. The ID is shown so staff can /note remove straight from here.
+            const notePageCount = Math.ceil(notes.length / NOTES_PER_PAGE);
+
+            for (let i = 0; i < notes.length; i += NOTES_PER_PAGE) {
+                const embed = baseEmbed(
+                    `Staff Notes: ${target.user.username}`,
+                    config.colors.info,
+                    notes.length,
+                    i / NOTES_PER_PAGE + 1,
+                    notePageCount,
+                );
+
+                for (const note of notes.slice(i, i + NOTES_PER_PAGE)) {
+                    const ts = Math.floor(note.createdAt.getTime() / 1000);
+                    embed.addFields({
+                        name:  `<t:${ts}:R>`,
+                        value: `${note.content}\n**Author:** <@${note.authorId}>\n**ID:** \`${note.id}\``,
+                    });
+                }
+
+                pages.push(embed);
+            }
+
             // ── Overview page (prepended) ─────────────────────────────────────
 
             const overview = new EmbedBuilder()
@@ -160,6 +193,7 @@ const command: BotCommand = {
                     { name: 'Warnings',   value: String(warns.length),       inline: true },
                     { name: 'Blacklists', value: String(blacklists.length),  inline: true },
                     { name: 'Flags',      value: String(flags.length),       inline: true },
+                    { name: 'Notes',      value: String(notes.length),       inline: true },
                 )
                 .setFooter({ text: `${config.meta.footer} • Page 1 of ${pages.length + 1} — use buttons to browse` })
                 .setTimestamp();

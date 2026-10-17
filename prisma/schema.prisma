@@ -138,6 +138,25 @@ model Flag {
   // since Prisma's schema syntax cannot express a partial/filtered unique index.
 }
 
+// ─── Note ─────────────────────────────────────────────────────────────────────
+// Private staff notes attached to a user (/note). Unlike Warn/Flag/Blacklist
+// these are non-punitive context for the team: they never DM the user, never
+// assign roles, and don't count as moderation actions in /modlogs totals.
+// Rows are hard-deleted by /note remove (the removal itself is written to
+// staff-logs). userId is a plain Discord ID, not a FK, so notes survive the
+// user leaving the server.
+
+model Note {
+  id        String   @id @default(cuid())
+  guildId   String
+  userId    String   // the user the note is about
+  authorId  String   // the staff member who wrote it
+  content   String   // capped at NOTE_CONTENT_MAX in src/utils/notes.ts
+  createdAt DateTime @default(now())
+
+  @@index([guildId, userId])
+}
+
 // ─── LogChannel ────────────────────────────────────────────────
 // Maps a log category (e.g. "mod-logs", "member-logs", "bot-logs") to a
 // destination channel for a guild. Replaces the old hardcoded
