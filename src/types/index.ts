@@ -29,11 +29,17 @@ export interface QuillClient extends Client {
 //
 //   export default command;
 
-import type { ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
+import type { AutocompleteInteraction, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 
 export interface BotCommand {
     data: SlashCommandBuilder;
     execute(interaction: ChatInputCommandInteraction): Promise<void>;
+    /**
+     * Optional handler for autocomplete-enabled options. Routed from
+     * interactionCreate.ts; must respond within ~3s via interaction.respond().
+     * Commands without autocomplete options simply omit it.
+     */
+    autocomplete?(interaction: AutocompleteInteraction): Promise<void>;
     /**
      * Subfolder this command was loaded from (e.g. "moderation", "config").
      * Set automatically by commandLoader.ts — don't set this in the command

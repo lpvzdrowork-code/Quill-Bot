@@ -10,6 +10,7 @@ import { getGuildSuspensionStatus } from '../utils/guildSuspension.js';
 import { sendLog } from '../utils/channelLogger.js';
 import { Embeds } from '../utils/embeds.js';
 import { handleEmbedModal } from '../utils/embedModals.js';
+import { handleTagModal } from '../utils/tagModals.js';
 import { APPLICATION_BUTTON_ID, APPLICATION_CLOSE_ID, handleApplicationButton, handleApplicationClose } from '../utils/applications.js';
 import type { BotEvent } from '../utils/eventLoader.js';
 
@@ -31,6 +32,12 @@ const event: BotEvent = {
                 } catch (err) {
                     log.error('Embed modal handler failed:', err);
                 }
+            } else if (interaction.customId.startsWith('tag_')) {
+                try {
+                    await handleTagModal(interaction);
+                } catch (err) {
+                    log.error('Tag modal handler failed:', err);
+                }
             }
             return;
         }
@@ -46,6 +53,24 @@ const event: BotEvent = {
                 }
             } catch (err) {
                 log.error(`Button handler failed for '${interaction.customId}':`, err);
+            }
+            return;
+        }
+
+        // Autocomplete requests are answered by the command that owns the option.
+        // They skip the suspension/permission/cooldown pipeline below: they only
+        // ever fire for someone Discord already let open the command, they return
+        // names rather than performing an action, and counting every keystroke
+        // against a cooldown would break typing.
+        if (interaction.isAutocomplete()) {
+            const owner = client.commands.get(interaction.commandName) as BotCommand | undefined;
+            if (!owner?.autocomplete) return;
+
+            try {
+                await owner.autocomplete(interaction);
+            } catch (err) {
+                // The 3s window may already have closed; nothing useful to tell the user.
+                log.warn(`Autocomplete failed for /${interaction.commandName}:`, err);
             }
             return;
         }

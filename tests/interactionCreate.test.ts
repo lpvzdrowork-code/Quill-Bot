@@ -33,6 +33,10 @@ vi.mock('../src/utils/embedModals.js', () => ({
     handleEmbedModal: vi.fn(),
 }));
 
+vi.mock('../src/utils/tagModals.js', () => ({
+    handleTagModal: vi.fn(),
+}));
+
 vi.mock('../src/utils/applications.js', () => ({
     APPLICATION_BUTTON_ID:   'application_open',
     APPLICATION_CLOSE_ID:    'application_close',
@@ -46,6 +50,7 @@ import { isAllowedCommandChannel, getCommandChannelIds } from '../src/utils/guil
 import { getGuildSuspensionStatus } from '../src/utils/guildSuspension.js';
 import { sendLog } from '../src/utils/channelLogger.js';
 import { handleEmbedModal } from '../src/utils/embedModals.js';
+import { handleTagModal } from '../src/utils/tagModals.js';
 import { handleApplicationButton, handleApplicationClose } from '../src/utils/applications.js';
 
 // ─── Test Doubles ─────────────────────────────────────────────────────────────
@@ -54,21 +59,34 @@ let commandCounter = 0;
 let userCounter = 0;
 
 /** Registers a fake command. Names are unique per call because cooldown state is module-level. */
-function addCommand(options: { name?: string; permissions?: bigint; execute?: ReturnType<typeof vi.fn> } = {}) {
+function addCommand(options: { name?: string; permissions?: bigint; execute?: ReturnType<typeof vi.fn>; autocomplete?: ReturnType<typeof vi.fn> } = {}) {
     const name = options.name ?? `cmd-${commandCounter++}`;
     const data = new SlashCommandBuilder().setName(name).setDescription('A test command.');
     if (options.permissions !== undefined) data.setDefaultMemberPermissions(options.permissions);
 
     const execute = options.execute ?? vi.fn().mockResolvedValue(undefined);
-    client.commands.set(name, { data, execute } as never);
+    client.commands.set(name, { data, execute, autocomplete: options.autocomplete } as never);
 
     return { name, execute };
+}
+
+function autocompleteInteraction(commandName: string) {
+    return {
+        isModalSubmit:      () => false,
+        isButton:           () => false,
+        isAutocomplete:     () => true,
+        isChatInputCommand: () => false,
+        commandName,
+        guildId: 'guild-1',
+        respond: vi.fn().mockResolvedValue(undefined),
+    };
 }
 
 function chat(commandName: string, overrides: Record<string, unknown> = {}) {
     return {
         isModalSubmit:      () => false,
         isButton:           () => false,
+        isAutocomplete:     () => false,
         isChatInputCommand: () => true,
         commandName,
         guildId:   'guild-1',
@@ -130,6 +148,22 @@ describe('interactionCreate', () => {
             await dispatch({ isModalSubmit: () => true, customId: 'something_else' });
 
             expect(handleEmbedModal).not.toHaveBeenCalled();
+            expect(handleTagModal).not.toHaveBeenCalled();
+        });
+
+        it('routes tag_ modal submissions to the tag handler and not the embed handler', async () => {
+            const interaction = { isModalSubmit: () => true, customId: 'tag_create|rules' };
+
+            await dispatch(interaction);
+
+            expect(handleTagModal).toHaveBeenCalledWith(interaction);
+            expect(handleEmbedModal).not.toHaveBeenCalled();
+        });
+
+        it('contains a failing tag modal handler instead of throwing', async () => {
+            vi.mocked(handleTagModal).mockRejectedValue(new Error('boom'));
+
+            await expect(dispatch({ isModalSubmit: () => true, customId: 'tag_edit|rules' })).resolves.toBeUndefined();
         });
 
         it('routes the application open and close buttons by customId', async () => {
@@ -166,6 +200,50 @@ describe('interactionCreate', () => {
             await dispatch(interaction);
 
             expect(replyPayload(interaction)).toEqual({ content: 'Unknown command.', flags: MessageFlags.Ephemeral });
+        });
+    });
+
+    describe('autocomplete', () => {
+        it('hands the interaction to the command that owns the option', async () => {
+            const autocomplete = vi.fn().mockResolvedValue(undefined);
+            const { name } = addCommand({ autocomplete });
+            const interaction = autocompleteInteraction(name);
+
+            await dispatch(interaction);
+
+            expect(autocomplete).toHaveBeenCalledWith(interaction);
+        });
+
+        it('does not run the command pipeline (no cooldown, suspension or permission checks)', async () => {
+            const autocomplete = vi.fn().mockResolvedValue(undefined);
+            const { name, execute } = addCommand({ autocomplete, permissions: PermissionFlagsBits.BanMembers });
+            const interaction = autocompleteInteraction(name);
+
+            await dispatch(interaction);
+            await dispatch(interaction);
+
+            expect(autocomplete).toHaveBeenCalledTimes(2); // repeated keystrokes are never rate limited
+            expect(execute).not.toHaveBeenCalled();
+            expect(getGuildSuspensionStatus).not.toHaveBeenCalled();
+        });
+
+        it('ignores autocomplete for a command that does not define a handler', async () => {
+            const { name } = addCommand();
+            const interaction = autocompleteInteraction(name);
+
+            await dispatch(interaction);
+
+            expect(interaction.respond).not.toHaveBeenCalled();
+        });
+
+        it('ignores autocomplete for an unknown command', async () => {
+            await expect(dispatch(autocompleteInteraction('does-not-exist'))).resolves.toBeUndefined();
+        });
+
+        it('contains a failing autocomplete handler instead of throwing', async () => {
+            const { name } = addCommand({ autocomplete: vi.fn().mockRejectedValue(new Error('window closed')) });
+
+            await expect(dispatch(autocompleteInteraction(name))).resolves.toBeUndefined();
         });
     });
 

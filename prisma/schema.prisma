@@ -234,3 +234,26 @@ model SecurityIncident {
 
   @@index([guildId, type])
 }
+
+// ─── Tag ──────────────────────────────────────────────────────────────────────
+// Canned responses staff can post with /tag post. `name` is the normalized
+// lookup key (lowercase a-z, 0-9, hyphen, underscore; see normalizeTagName in
+// src/utils/tags.ts), unique per guild. `content` is markdown rendered in an
+// embed description, so it is capped at 4000 characters. `uses` counts /tag
+// post invocations only (previews via /tag view don't count).
+
+model Tag {
+  id          String   @id @default(cuid())
+  guildId     String
+  name        String
+  title       String?
+  content     String
+  uses        Int      @default(0)
+  createdById String
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([guildId, name])
+  @@index([guildId])
+}
